@@ -1,7 +1,19 @@
 # !/bin/python
 """Class for loading DFXM data sets.
 
-The class can be loaded from another Python file. This gives access to all metadata in the data set as well as direct access to an image by giving either coordinates or an index.
+The class can be loaded from another Python file. This gives access to all
+metadata in the data set as well as direct access to an image by giving either
+coordinates or an index.
+
+A number of packages are required:
+
+numpy
+scipy
+EdfFile
+matplotlib
+seaborn (For prettier plots)
+mpi4py (For parallel tasks)
+
 
 To use the class in another Python file:
 
@@ -9,28 +21,48 @@ To use the class in another Python file:
 
 where getedfdata.py is in a sub directory called 'lib'.
 
-An example of using the class can be found in the test function at the bottom of this file.
+
+An example of using the class can be found in the test function at the bottom
+of this file.
 """
+
 import os
 import math
 import numpy as np
 import scipy
 import scipy.ndimage
 import EdfFile
+
 from os import listdir
 from os.path import isfile,  join
-import cv2
+
 from time import localtime,  strftime
 import matplotlib
 import matplotlib.pylab as plt
+
 import seaborn as sns
 from mpi4py import MPI
+
 import time
 
 
 class GetEdfData(object):
 
-	"""docstring for GetEdfData."""
+	"""Initialization of GetEdfData.
+
+	The class is initialized with:
+	path: Path to data.
+	filename: Beginning of the filename of the datafiles.
+	bg_filename: Beginning of the filename of the background files.
+	roi: A tuple of [x1, x2, y1, y2], designating region of interest.
+	datatype: Either 'strain_tt', 'strain_eta' or 'topotomo'. Decides from
+		which motor to get the 2nd value (not theta).
+
+	A folder is created in $WORKING_DIR/output/ with the name of current date
+		and time. In that dir a txt file is put with information about datatype
+		sampletitle, path and ROI. The file works as a log, so the user can put
+		in any information that is necessary. 
+	"""
 
 	def __init__(self,  path, filename, bg_filename, roi, datatype):
 		super(GetEdfData,  self).__init__()
@@ -274,10 +306,6 @@ class GetEdfData(object):
 		return im
 
 	def cleanImage(self, img):
-
-		# kernel = np.ones((5, 5), np.float32)/25
-		# img = cv2.filter2D(img, -1, kernel)
-
 		img = self.rfilter(img,18,3)
 		img[img < 0] = 0
 
