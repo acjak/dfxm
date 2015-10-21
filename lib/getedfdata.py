@@ -15,6 +15,7 @@ import os
 import math
 import numpy as np
 import scipy
+import scipy.ndimage
 import EdfFile
 from os import listdir
 from os.path import isfile,  join
@@ -952,9 +953,13 @@ if __name__ == '__main__':
 
 	datatype = 'strain_tt'
 
+	# Set the point of interest, the center of the region of interest (ROI).
 	poi = [1250, 1150]
+
+	# Set the size of the ROI.
 	size = [600, 300]
 
+	# ROI calculated.
 	roi = [poi[0]-size[0]/2, poi[0]+size[0]/2, poi[1]-size[1]/2, poi[1]+size[1]/2]
 
 	# Initialize the class as 'dfxm'.
@@ -968,25 +973,17 @@ if __name__ == '__main__':
 
 	# To get an array of all pictures. First column is the 2Theta value, 2nd row is theta value.
 	meta = dfxm.getMetaArray()
-	print a, b
-	# Get the index of
+
+	# Get the index of 2theta = 22.046 and 10.9805.
 	index = dfxm.getIndex(22.046, 10.9805)
+
+	# Get the image for that index. Stored in 'img'. Background is subtracted.
 	img = dfxm.getImage(index[0], False)
 
-	# index = test2.getIndex(1., 10.9885)
-	img2 = dfxm.getImage(index[0])
-
-	# Subtracting bg
-	img2 -= bg
-	# Binning 2x2
-	img2 = dfxm.rebin(img2, 2)
-
-	# Subtracting bg
-	img -= bg
 	# Binning 2x2
 	img = dfxm.rebin(img, 2)
-	# img = test2.makeMultiColor(img, img2)
 
-	plt.imshow(img)
+	# Show image.
+	plt.imshow(img, cmap="Greens")
 	plt.colorbar()
 	plt.show()
