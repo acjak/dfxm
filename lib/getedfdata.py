@@ -1,5 +1,16 @@
 # !/bin/python
-"""blah."""
+"""Class for loading DFXM data sets.
+
+The class can be loaded from another Python file. This gives access to all metadata in the data set as well as direct access to an image by giving either coordinates or an index.
+
+To use the class in another Python file:
+
+	from lib.getedfdata import *
+
+where getedfdata.py is in a sub directory called 'lib'.
+
+An example of using the class can be found in the test function at the bottom of this file.
+"""
 import os
 import math
 import numpy as np
@@ -926,46 +937,54 @@ class GetEdfData(object):
 		return figstrain, axstrain
 
 if __name__ == '__main__':
-	path = '/Users/andcj/hxrm_data/disl_may_2015/dislocations/mapping'
+	comm = MPI.COMM_WORLD
+	rank = comm.Get_rank()
 
-	filename = 'map2'
+	if rank == 0:
+		start = time.time()
+
+
+	path = '/Users/andcj/hxrm_data/disl_may_2015/dislocations/strain'
+
+	filename = 'strainmap_tt_2'
 	sampletitle = filename
 	bg_filename = 'bg1_5s_'
 
-	phi_val = -1
+	datatype = 'strain_tt'
 
-	roi_xmin = 0
-	roi_xmax = 2048
-	roi_ymin = 0
-	roi_ymax = 2048
+	poi = [1250, 1150]
+	size = [600, 300]
 
-	datatype = 'strain_eta'
+	roi = [poi[0]-size[0]/2, poi[0]+size[0]/2, poi[1]-size[1]/2, poi[1]+size[1]/2]
 
-	test = GetEdfData(path, filename, bg_filename, roi_xmin, roi_xmax, roi_ymin, roi_ymax, datatype)
-	filename = 'map1'
-	sampletitle = filename
-	# test2 = GetEdfData(path, filename, bg_filename, roi_xmin, roi_xmax, roi_ymin, roi_ymax)
+	# Initialize the class as 'dfxm'.
+	dfxm = GetEdfData(path, filename, bg_filename, roi, datatype)
 
-	a, b = test.getMetaValues()
-	meta = test.getMetaArray()
+	dfxm.setTest(True)
+	dfxm.adjustOffset(True)
 
-	bg = test.getBG()
+	# To get alpha and beta values present in the data set:
+	a, b = dfxm.getMetaValues()
 
-	index = test.getIndex(181., 10.9885)
-	img = test.getImage(index[0])
+	# To get an array of all pictures. First column is the 2Theta value, 2nd row is theta value.
+	meta = dfxm.getMetaArray()
+	print a, b
+	# Get the index of
+	index = dfxm.getIndex(22.046, 10.9805)
+	img = dfxm.getImage(index[0], False)
 
 	# index = test2.getIndex(1., 10.9885)
-	img2 = test.getImage(index[0])
+	img2 = dfxm.getImage(index[0])
 
 	# Subtracting bg
 	img2 -= bg
 	# Binning 2x2
-	img2 = test.rebin(img2, 2)
+	img2 = dfxm.rebin(img2, 2)
 
 	# Subtracting bg
 	img -= bg
 	# Binning 2x2
-	img = test.rebin(img, 2)
+	img = dfxm.rebin(img, 2)
 	# img = test2.makeMultiColor(img, img2)
 
 	plt.imshow(img)
