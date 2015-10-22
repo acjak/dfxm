@@ -127,7 +127,7 @@ class GetEdfData(object):
 	def makeROIAdjustmentArray(self):
 		self.adj_array = np.zeros((len(self.alphavals),  4))
 		for i in range(len(self.alphavals)):
-			offset = (i-10)*2 
+			offset = (i-10)*2
 			self.adj_array[i,  0] = self.roi[0]
 			self.adj_array[i,  1] = self.roi[1]
 			self.adj_array[i,  2] = self.roi[2]+offset
@@ -171,7 +171,7 @@ class GetEdfData(object):
 		self.bg_combined_full /= len(self.bg_files)
 
 	def getMeanData(self):
-		meandatafile = 'datamean_%s.txt' % self.sampletitle
+		meandatafile = 'output/datamean_%s.txt' % self.sampletitle
 
 		if os.path.isfile(meandatafile) == True:
 			self.data_mean = np.loadtxt(meandatafile)

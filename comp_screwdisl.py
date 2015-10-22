@@ -29,9 +29,9 @@ def makeGvector(bv, xylin, ang):
 
 	for i in range(len(xylin)):
 		for j in range(len(xylin)):
-			if i != xcpos or j != ycpos:
+			if i != xcpos and j != ycpos:
 				gv[0, i, j] = prefix*bv/(2*math.pi)*(xylin[j])/((xylin[i])**2 + (xylin[j])**2)
-				gv[1, i, j] = -prefix*bv/(2*math.pi)*(xylin[i])/((xylin[i])**2 + (xylin[j])**2)
+				gv[1, i, j] = prefix*bv/(2*math.pi)*(xylin[i])/((xylin[i])**2 + (xylin[j])**2)
 				gv[2, i, j] = prefix
 
 	return gv
@@ -55,7 +55,7 @@ def fullArray(gv, wl, xylin, omega0):
 	sigmay = 5E-4
 	sigmaz = 1E-4
 
-	om_start = 15
+	om_start = 18
 	xi_start = 5
 
 	with open(data.infFile,  "a") as myfile:
@@ -81,8 +81,8 @@ def fullArray(gv, wl, xylin, omega0):
 			matrix_part = np.zeros((len(xylin), len(xylin)))
 
 			# Omega and xi defined from the peak position in degrees.
-			omega = 10.9925-b[j+om_start]
-			xi = 22.081-a[i+xi_start]
+			omega = b[j+om_start]-10.9925
+			xi = a[i+xi_start]-22.091
 
 			# Import image from data set.
 			ind = data.getIndex(float(a[i+xi_start]),float(b[j+om_start]))[0]
@@ -90,7 +90,8 @@ def fullArray(gv, wl, xylin, omega0):
 
 			# Creat subplot in plot array.
 			axarr = plt.subplot(gs1[k])
-			axarr.set_title('%.3f %.3f' % (omega, xi),fontsize=8)
+			# axarr.set_title('%.3f %.3f' % (omega, xi),fontsize=8)
+			axarr.set_title('%.4f %.4f' % (b[j+om_start], a[i+xi_start]),fontsize=8)
 
 			# Get an average across the dislocation line.
 			line = np.sum(img, axis=1)/len(img[0, :])
@@ -109,7 +110,7 @@ def fullArray(gv, wl, xylin, omega0):
 					# Use the distance to fold with a Gaussian.
 					matrix_part[c, d] += math.exp(-(dist[0]**2)/(2*sigmax**2))
 					matrix_part[c, d] += math.exp(-(dist[1]**2)/(2*sigmay**2))
-					matrix_part[c, d] *= math.exp(-(dist[2]/100**2)/(2*sigmaz**2))
+					matrix_part[c, d] += math.exp(-(dist[2]**2)/(2*sigmaz**2))
 
 			# Plot data.
 			axarr.plot(xylin, line)
@@ -118,16 +119,17 @@ def fullArray(gv, wl, xylin, omega0):
 			# Make a line from the model and plot it on the same subplot.
 			model_line = np.sum(matrix_part[:,:], axis=1)
 			axarr.plot(xylin, np.max(line)*model_line/np.max(model_line))
+			# axarr.plot(xylin, 10*model_line)
 
 			# axarr.imshow(matrix_part, cmap='Greens')
-
+			# axarr.set_ylim(0,2000)
 			axarr.xaxis.set_major_formatter(plt.NullFormatter())
 			axarr.yaxis.set_major_formatter(plt.NullFormatter())
 
 			k += 1
 
 	fig.savefig(data.directory + '/comp_screwdisl.pdf')
-	# plt.show()
+	plt.show()
 
 
 path = '/Users/andcj/hxrm_data/disl_may_2015/dislocations/strain'
