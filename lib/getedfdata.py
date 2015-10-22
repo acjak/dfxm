@@ -61,7 +61,7 @@ class GetEdfData(object):
 	A folder is created in $WORKING_DIR/output/ with the name of current date
 		and time. In that dir a txt file is put with information about datatype
 		sampletitle, path and ROI. The file works as a log, so the user can put
-		in any information that is necessary. 
+		in any information that is necessary.
 	"""
 
 	def __init__(self,  path, filename, bg_filename, roi, datatype):
@@ -127,8 +127,7 @@ class GetEdfData(object):
 	def makeROIAdjustmentArray(self):
 		self.adj_array = np.zeros((len(self.alphavals),  4))
 		for i in range(len(self.alphavals)):
-			offset = (i-10)*2  # *4
-			# print i,  offset
+			offset = (i-10)*2 
 			self.adj_array[i,  0] = self.roi[0]
 			self.adj_array[i,  1] = self.roi[1]
 			self.adj_array[i,  2] = self.roi[2]+offset
@@ -253,10 +252,7 @@ class GetEdfData(object):
 
 	def fitGaussian(self, x, y):
 		from scipy.optimize import curve_fit
-		# n = len(x)                          # the number of data
-		# mean = sum(x*y)/n                   # note this correction
-		# sigma = sum(y*(x-mean)**2)/n        # note this correction
-		# sigma = -3.E-3
+
 		try:
 			popt, pcov = curve_fit(self.gaus, x, y, p0=[max(y), x[np.argmax(y)], -3.E-3], maxfev=100000)
 			return popt, pcov
@@ -279,28 +275,22 @@ class GetEdfData(object):
 		file_with_path = self.path + '/' + self.data_files[index]
 		if self.rank == 0:
 			print file_with_path
-		# print index
 
-		# if os.path.isfile(tmpfile):
-		# 	im = np.load(tmpfile)
 		if True:
 			img = EdfFile.EdfFile(file_with_path)
 			if self.adjustoffset is True:
 				alpha = self.meta[index, 0]
-				# beta = self.meta[index, 1]
-				# print alpha
 				a_index = np.where(self.alphavals == alpha)
-				# b_index = np.where(self.betavals == beta)
-				# print b_index[0]
 				roi = self.adj_array[a_index[0]][0]
-				# print roi
 			else:
 				print roi
 				roi = self.roi
+
 			if full is True:
 				im = img.GetData(0).astype(np.int64)-self.bg_combined_full
 			else:
 				im = img.GetData(0).astype(np.int64)[roi[2]:roi[3], roi[0]:roi[1]]-self.bg_combined
+
 			im = self.cleanImage(im)
 			np.save(tmpfile,im)
 		return im
@@ -563,7 +553,7 @@ class GetEdfData(object):
 				ta = np.ones((len(img1[:, 0]), len(img1[0, :]), 4),  dtype=np.uint8)*0
 
 				ta[:, :, 3] = 255
-				ta[:, :, 1] = img1  # 255*img1/np.max(img1)
+				ta[:, :, 1] = img1
 
 				axarr[0, i].imshow(ta)
 				axarr[0, i].xaxis.set_major_formatter(plt.NullFormatter())
@@ -579,8 +569,8 @@ class GetEdfData(object):
 		if len(index[0, :]) != 1:
 			for i in range(len(index[:, 0])):
 				axarr = plt.subplot(gs1[i])
-				self.roi[2] = 350+i*15-20  # 1130-i*17-100
-				self.roi[3] = 350+i*15+20  # 1130-i*17+100
+				self.roi[2] = 350+i*15-20
+				self.roi[3] = 350+i*15+20
 				img1 = self.getImage(index[i, 0], False)
 
 				img2 = self.getImage(index[i, 1], False)
@@ -622,18 +612,10 @@ class GetEdfData(object):
 		print np.shape(img2)
 
 	def findPeaks(self, y1, y2):
-		# max2min = 20
-		max2 = np.argmax(y2)  # [max2min:45])
+		max2 = np.argmax(y2)
 		max1 = np.argmax(y1[:max2])
-		# print max1
-		# print y2[max1+10:]
-		max2 = np.argmax(y2[max1+2:])+max1+2  # [max2min:45])
-		# x = range(len(y1))
 
-		# popt, pcov = self.fitGaussian(x, y2)
-		# print max1
-		# print popt
-		# print pcov
+		max2 = np.argmax(y2[max1+2:])+max1+2
 
 		return max1, max2  # ,popt# max1+max2min, max2+max2min, max2min
 
@@ -646,9 +628,6 @@ class GetEdfData(object):
 		pic = np.zeros((len(img[:, 0]), len(img[0, :]), 4),  dtype=np.uint8)
 		pic[:, :, 3] = 255
 		pic[:, :, 1] = 255*img/np.max(img)
-		# pic[:, :, 2] = 255*img/np.max(img)
-		# pic[:, :, 3] = 255
-		# pic[:, :, 1] = img# 255*img/np.max(img)
 
 		fig,  ax = plt.subplots(figsize=(8, 8))
 		ax.plot([self.roi[0], self.roi[0]], [self.roi[2], self.roi[3]], color='magenta')
@@ -659,14 +638,13 @@ class GetEdfData(object):
 		ax.imshow(pic, interpolation='None')
 		if self.rank == 0:
 			fig.savefig(self.directory + '/fullimg.png')
-		# fig.colorbar(img1)
+
 		return fig, ax
 
 	def getProjection(self, data, x0, y0, x1, y1):
 		num = 500
 		x,  y = np.linspace(x0,  x1,  num),  np.linspace(y0,  y1,  num)
-		# zi = scipy.ndimage.map_coordinates(data,  np.vstack((x, y))) # THIS DOESN'T WORK CORRECTLY
-		zi = scipy.ndimage.map_coordinates(np.transpose(data),  np.vstack((x, y)))  # THIS SEEMS TO WORK CORRECTLY
+		zi = scipy.ndimage.map_coordinates(np.transpose(data),  np.vstack((x, y)))
 		length = math.sqrt((x1-x0)**2+(y1-y0)**2)
 		return zi, length
 
@@ -686,11 +664,7 @@ class GetEdfData(object):
 						strain = popt[1]/(10.992)
 						if strain >= -0.0002 and strain <= 0.0002:
 							strainpic[i, j] = strain
-						# else:
-						# 	print "Gaussian peak weird."
-							# strainpic[i,j] = 0  # np.nan
 					except TypeError:
-						# strainpic[i,j] = 0
 						print i, j, "Gaussian could not be fitted."
 
 			strainpic[0, 0] = self.rank
