@@ -183,7 +183,7 @@ class GetEdfData(object):
 				file_with_path = self.path + '/' + self.data_files[i]
 				img = EdfFile.EdfFile(file_with_path)
 				self.data_mean[i] = img.GetData(0).astype(np.int64)[self.roi[2]:self.roi[3],  self.roi[0]:self.roi[1]].mean()-self.bg_combined.mean()
-			np.savetxt('datamean_%s.txt' % self.sampletitle,  self.data_mean)
+			np.savetxt('output/datamean_%s.txt' % self.sampletitle,  self.data_mean)
 
 	def getMean(self):
 		self.getMeanData()
