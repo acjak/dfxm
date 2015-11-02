@@ -56,7 +56,7 @@ def fullArray(gv, wl, xylin, omega0):
 	sigmaz = 1E-4
 
 	om_start = 18
-	xi_start = 5
+	xi_start = 10
 
 	with open(data.infFile,  "a") as myfile:
 		myfile.write("sigmax: %s \n" % (str(sigmax)))
@@ -69,20 +69,20 @@ def fullArray(gv, wl, xylin, omega0):
 
 	k = 0
 
-	fig = plt.figure(figsize=(16, 12))
-	gs1 = matplotlib.gridspec.GridSpec(len(a)/2,10)
+	fig = plt.figure(figsize=(18, 4))
+	gs1 = matplotlib.gridspec.GridSpec(1,10)
 	gs1.update(wspace=0.02,  hspace=0.2)
 
 	sns.set_style("white")
 
-	for i in range(len(a)/2):
+	for i in range(1):  # len(a)/2):
 		for j in range(10):
 			# Empty array for model calculations.
 			matrix_part = np.zeros((len(xylin), len(xylin)))
 
 			# Omega and xi defined from the peak position in degrees.
-			omega = b[j+om_start]-10.9925
-			xi = a[i+xi_start]-22.091
+			omega = b[j+om_start]-10.995
+			xi = a[i+xi_start]-22.086
 
 			# Import image from data set.
 			ind = data.getIndex(float(a[i+xi_start]),float(b[j+om_start]))[0]
@@ -99,6 +99,19 @@ def fullArray(gv, wl, xylin, omega0):
 			# Make Q vector from the same angle as data.
 			q = makeQvector(wl, np.radians(omega0+omega), np.radians(2*omega0+xi))
 
+			# Length of q.
+			ql = math.sqrt(q[0]**2 + q[1]**2 + q[2]**2)
+			print q[1]**2, q[2]**2
+			print ql
+
+			sigma_a = 7.698e-5
+			sigma_a = 2.8e-4
+
+			sigmax = 2*ql*sigma_a
+			sigmay = ql*1e-5
+			sigmaz = ql*(1/math.tan(np.radians(omega0+omega)))*sigma_a
+
+
 			# Loop over all pixels in the cross-sectional model image.
 			for c in range(len(xylin)):
 				for d in range(len(xylin)):
@@ -110,7 +123,7 @@ def fullArray(gv, wl, xylin, omega0):
 					# Use the distance to fold with a Gaussian.
 					matrix_part[c, d] += math.exp(-(dist[0]**2)/(2*sigmax**2))
 					matrix_part[c, d] += math.exp(-(dist[1]**2)/(2*sigmay**2))
-					matrix_part[c, d] += math.exp(-(dist[2]**2)/(2*sigmaz**2))
+					matrix_part[c, d] *= math.exp(-(dist[2]**2)/(2*sigmaz**2))
 
 			# Plot data.
 			axarr.plot(xylin, line)
