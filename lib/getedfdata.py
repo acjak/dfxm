@@ -218,8 +218,8 @@ class GetEdfData(object):
 				self.meta[i,  0] = round(float(motpos_array[mot_array.index('obyaw')]),  8)
 
 			sn = float(self.data_files[i][-8:-4])
-			theta = (11.01-10.97)/40
-			self.meta[i,  1] = round(10.9700+theta*sn+theta/2,  8)
+			theta = (11.006-10.986)/40
+			self.meta[i,  1] = round(10.986+theta*sn+theta/2,  8)
 			self.meta[i,  2] = sn
 
 		alphavals = sorted(list(set(self.meta[:,  0])))
