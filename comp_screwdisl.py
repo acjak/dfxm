@@ -81,7 +81,7 @@ def fullArray(gv, wl, xylin, omega0):
 			matrix_part = np.zeros((len(xylin), len(xylin)))
 
 			# Omega and xi defined from the peak position in degrees.
-			omega = b[j+om_start]-10.995
+			omega = b[j+om_start]-10.996
 			xi = a[i+xi_start]-22.086
 
 			# Import image from data set.
