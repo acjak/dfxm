@@ -1,5 +1,8 @@
 #!/usr/local/bin/python
 
+## To use it on the gauss2 computer:
+# Change first line to: #!/users/blissadm/bin/python
+
 import numpy as np
 import scipy
 import EdfFile
@@ -49,7 +52,7 @@ for fname in data_files:
     print fname
     n += 1
 
-meanimg = np.mean(imgstack, 2)
+# meanimg = np.mean(imgstack, 2)
 imgmin = np.min(imgstack,2)
 
 spotmax, maxpos = findBrightSpot(imgmin)
