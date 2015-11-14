@@ -27,7 +27,7 @@ if rank == 0:
 	start = time.time()
 
 
-path = '/Users/andcj/hxrm_data/al_nov_2015/diamond/nearfield'
+path = '/data/hxrm/Dislocations_november_2015/diamond/nearfield'
 
 filename = 'topotomo_nf1_'
 sampletitle = filename

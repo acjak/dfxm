@@ -7,7 +7,7 @@ import numpy as np
 
 # import matplotlib
 import matplotlib.pylab as plt
-import seaborn as sns
+# import seaborn as sns
 
 import scipy.ndimage
 import itertools
@@ -68,7 +68,7 @@ def diagonalPlot(meta, alpha, beta, hist, bins, xpos, datatype, rank):
 		# fig2.clf()
 
 	if rank == 0:
-		sns.set_style("white")
+		# sns.set_style("white")
 		hist_array[:, :, 0] = hist
 		fig,  ax = data.makeHistogram(hist_array, alpha, beta, 'diagplot_hist_%g_%g' % (startpos[0], startpos[1]))
 		# data.showArea(i1[0, 0, show_index], i1[0, 1, show_index])
@@ -156,8 +156,8 @@ def overlapImg(meta, a, b, hist, pos1, pos2):
 
 def makeGrid(meta, a, b):
 
-	sns.set_style("white")
-	sns.set_context("paper")
+	# sns.set_style("white")
+	# sns.set_context("paper")
 
 	# plt.figure(figsize = (14, 14))
 	# gs1 = matplotlib.gridspec.GridSpec(4, 4)
@@ -200,7 +200,7 @@ if rank == 0:
 	start = time.time()
 
 
-path = '/Users/andcj/hxrm_data/disl_may_2015/dislocations/strain'
+path = '/data/hxrm/Dislocation_may_2015/dislocations/strain'
 
 filename = 'strainmap_tt_2'
 sampletitle = filename

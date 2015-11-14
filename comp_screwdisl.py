@@ -7,7 +7,7 @@ import numpy as np
 
 # import matplotlib
 import matplotlib.pylab as plt
-import seaborn as sns
+# import seaborn as sns
 
 import scipy.ndimage
 import itertools
@@ -73,7 +73,7 @@ def fullArray(gv, wl, xylin, omega0):
 	gs1 = matplotlib.gridspec.GridSpec(1,10)
 	gs1.update(wspace=0.02,  hspace=0.2)
 
-	sns.set_style("white")
+	# sns.set_style("white")
 
 	for i in range(1):  # len(a)/2):
 		for j in range(10):
@@ -145,7 +145,7 @@ def fullArray(gv, wl, xylin, omega0):
 	plt.show()
 
 
-path = '/Users/andcj/hxrm_data/disl_may_2015/dislocations/strain'
+path = '/data/hxrm/Dislocation_may_2015/dislocations/strain'
 
 filename = 'strainmap_tt_2'
 sampletitle = filename

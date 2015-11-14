@@ -40,7 +40,7 @@ from time import localtime,  strftime
 import matplotlib
 import matplotlib.pylab as plt
 
-import seaborn as sns
+# import seaborn as sns
 from mpi4py import MPI
 
 import time
@@ -161,7 +161,7 @@ class GetEdfData(object):
 		self.bg_combined_full = np.zeros(np.shape(bg_img_full))
 
 		if self.rank == 0:
-			print "Reading backg files (Full)..."
+			print "Reading background files (Full)..."
 
 		for i in range(len(self.bg_files)):
 			bg_file_with_path = self.path + '/' + self.bg_files[i]
@@ -389,9 +389,9 @@ class GetEdfData(object):
 
 	def makeHistogram(self, hist, alpha, beta, savefilename):
 		import matplotlib.pylab as plt
-		import seaborn as sns
-		sns.set_style("white")
-		sns.set_context("paper")
+		# import seaborn as sns
+		# sns.set_style("white")
+		# sns.set_context("paper")
 
 		if len(hist[0, 0, :]) == 1:
 			fig, ax = plt.subplots(ncols=len(hist[0, 0, :]), figsize=(6 * len(hist[0, 0, :]), 6))
@@ -429,8 +429,8 @@ class GetEdfData(object):
 		return fig, ax
 
 	def makePlotArray(self, index, bins, xpos, savefilename):
-		sns.set_style("white")
-		sns.set_context("paper")
+		# sns.set_style("white")
+		# sns.set_context("paper")
 
 		# diff = np.zeros((len(index[:, 0])))
 
@@ -543,8 +543,8 @@ class GetEdfData(object):
 			fig_array.savefig(self.directory + '/%s_%s_x%g.pdf' % (savefilename, self.datatype, xpos))
 
 	def makeLargePlotArray(self, index, bins, xpos, savefilename):
-		sns.set_style("white")
-		sns.set_context("paper")
+		# sns.set_style("white")
+		# sns.set_context("paper")
 
 		plt.figure(figsize=(20, 16))
 		gs1 = matplotlib.gridspec.GridSpec(8,  8)
@@ -628,8 +628,8 @@ class GetEdfData(object):
 		return max1, max2  # ,popt# max1+max2min, max2+max2min, max2min
 
 	def showArea(self, i1, i2):
-		sns.set_style("white")
-		sns.set_context("paper")
+		# sns.set_style("white")
+		# sns.set_context("paper")
 
 		index = self.getIndex(float(self.alphavals[i1]), float(self.betavals[i2]))
 		img = self.getImage(index[0], True)
@@ -781,7 +781,7 @@ class GetEdfData(object):
 			return gaussarray
 
 	def plotPPOS(self, gaussarray, length):
-		sns.set_context("talk")
+		# sns.set_context("talk")
 
 		figstrain, axppos = plt.subplots(3, 1)
 
@@ -892,7 +892,7 @@ class GetEdfData(object):
 
 	def plotStrain(self, strainpic):
 		import matplotlib.ticker as ticker
-		sns.set_context("talk")
+		# sns.set_context("talk")
 		figstrain, axstrain = plt.subplots(2, 1)
 		# im = axstrain[0].imshow(strainpic, cmap="BrBG")
 		# im2 = axstrain[1].imshow(self.imgarray[2, :, :], cmap="Greens")
@@ -939,7 +939,7 @@ class GetEdfData(object):
 			strain = np.reshape(strainpic, len(strainpic[:, 0])*len(strainpic[0, :]))
 			# strain[strain<-0.0005] = 0
 			# strain[strain>0.0005] = 0
-			sns.distplot(strain, kde=False,  rug=False)
+			# sns.distplot(strain, kde=False,  rug=False)
 			ax4.set_xlim(np.min(strain)-abs(0.1*np.min(strain)), np.max(strain)+0.1*np.max(strain))
 			# ax4.set_xlim(-0.0004,0.0004)
 			ax4.set_xlabel(r'$\theta$ offset [$^o$]')
