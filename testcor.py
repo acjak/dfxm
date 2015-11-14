@@ -4,7 +4,7 @@
 # Change first line to: #!/users/blissadm/bin/python
 
 import numpy as np
-import scipy
+from scipy import ndimage, signal
 import EdfFile
 import sys
 from os import listdir
@@ -23,10 +23,22 @@ def getFilelists(filename):
     return data_files
 
 def findBrightSpot(img):
-    r = 10
+    r = 20
     spotmax = 0
+    maxpos = [1000,1000]
 
-    # weight = np.ones((20,20))*30000.
+    weight = np.ones((5,5))*30000.
+
+    # correlation = ndimage.correlate(weight,img)
+    # matches = (correlation-np.mean(correlation)) > 1*np.std(correlation)
+
+    # hotspot = signal.convolve2d(img,weight)
+    #
+    # print np.argmax(hotspot,0)
+    # print np.argmax(hotspot,1)
+    #
+    # maxpos[0] = [np.max(np.argmax(hotspot,0))]
+    # maxpos[1] = [np.max(np.argmax(hotspot,1))]
 
     for i in range(len(img[:,0])):
         for j in range(len(img[0,:])):
@@ -37,7 +49,7 @@ def findBrightSpot(img):
                     maxpos = [i,j]
 
     print spotmax, maxpos
-    print img[maxpos[0]-r:maxpos[0]+r,maxpos[1]-r:maxpos[1]+r]
+    # print img[maxpos[0]-r:maxpos[0]+r,maxpos[1]-r:maxpos[1]+r]
     return spotmax, maxpos
 
 data_files = getFilelists(sys.argv[1])
@@ -55,9 +67,12 @@ for fname in data_files:
 # meanimg = np.mean(imgstack, 2)
 imgmin = np.min(imgstack,2)
 
-spotmax, maxpos = findBrightSpot(imgmin)
+
 
 plt.imshow(imgmin)
-plt.autoscale(False)
-plt.scatter(maxpos[1], maxpos[0], s=100, color='magenta')
+# plt.autoscale(False)
+if len(sys.argv) > 2:
+    if sys.argv[2] == '1':
+        spotmax, maxpos = findBrightSpot(imgmin)
+        plt.scatter(maxpos[1], maxpos[0], s=100, color='magenta')
 plt.show()

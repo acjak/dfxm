@@ -210,6 +210,16 @@ class GetEdfData(object):
 
 			if self.datatype == 'topotomo':
 				self.meta[i,  0] = round(float(motpos_array[mot_array.index('diffrx')]),  8)
+				sn = float(self.data_files[i][-8:-4])
+
+				self.meta[i,  1] = round(float(motpos_array[mot_array.index('diffrz')]),  5)
+				self.meta[i,  2] = sn
+
+			else:
+				sn = float(self.data_files[i][-8:-4])
+				theta = (11.006-10.986)/40
+				self.meta[i,  1] = round(10.986+theta*sn+theta/2,  8)
+				self.meta[i,  2] = sn
 
 			if self.datatype == 'strain_eta':
 				self.meta[i,  0] = round(float(motpos_array[mot_array.index('obpitch')]),  8)
@@ -217,10 +227,8 @@ class GetEdfData(object):
 			if self.datatype == 'strain_tt':
 				self.meta[i,  0] = round(float(motpos_array[mot_array.index('obyaw')]),  8)
 
-			sn = float(self.data_files[i][-8:-4])
-			theta = (11.006-10.986)/40
-			self.meta[i,  1] = round(10.986+theta*sn+theta/2,  8)
-			self.meta[i,  2] = sn
+
+
 
 		alphavals = sorted(list(set(self.meta[:,  0])))
 		betavals = sorted(list(set(self.meta[:,  1])))
@@ -260,11 +268,11 @@ class GetEdfData(object):
 			print "Error - curve_fit failed"
 
 	def getIndex(self, alpha, beta):
-		if alpha != -1 and beta == -1:
+		if alpha != -10000 and beta == -10000:
 			index = np.where(self.meta[:, 0] == alpha)
-		if alpha == -1 and beta != -1:
+		if alpha == -10000 and beta != -10000:
 			index = np.where(self.meta[:, 1] == beta)
-		if alpha != -1 and beta != -1:
+		if alpha != -10000 and beta != -10000:
 			i1 = np.where(self.meta[:, 0] == alpha)
 			i2 = np.where(self.meta[:, 1] == beta)
 			index = list(set(i1[0]).intersection(i2[0]))
@@ -283,10 +291,10 @@ class GetEdfData(object):
 				a_index = np.where(self.alphavals == alpha)
 				roi = self.adj_array[a_index[0]][0]
 			else:
-				print roi
 				roi = self.roi
 
 			if full is True:
+				print np.shape(self.bg_combined_full)
 				im = img.GetData(0).astype(np.int64)-self.bg_combined_full
 			else:
 				im = img.GetData(0).astype(np.int64)[roi[2]:roi[3], roi[0]:roi[1]]-self.bg_combined
