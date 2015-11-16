@@ -65,8 +65,8 @@ local_c = c[istart:istop]
 
 
 fig = plt.figure(frameon=False)
-fig.set_size_inches(5,5)
-ax = plt.Axes(fig,[0.,0.,1.,1.])
+fig.set_size_inches(5, 5)
+ax = plt.Axes(fig,[0., 0., 1., 1.])
 ax.set_axis_off()
 fig.add_axes(ax)
 
@@ -74,26 +74,26 @@ for i in range(len(local_a)):
 	print local_a[i], local_c[i]
 	index = data.getIndex(float(local_a[i]), float(b[0]))
 	img0 = data.getImage(index[0], False)
-	
+
 	print np.mean(img0)
-	
+
 	index = data2.getIndex(float(local_c[i]), float(d[0]))
 	img1 = data2.getImage(index[0], False)
-	
+
 	ta = np.ones((len(img1[:, 0]), len(img1[0, :]), 4),  dtype=np.uint8)*0
-	
+
 	ta[:, :, 3] = 255
 	ta[:, :, 0] = 255*img0/np.max(img0)
 	ta[:, :, 2] = 255*img0/np.max(img0)
 	ta[:, :, 1] = 255*img1/np.max(img1)
-	
+
 	if np.mean(img0) < 0.01 and np.mean(img1) < 0.01:
 		ta[:, :, 3] = 255
 		ta[:, :, 0] = 0
 		ta[:, :, 2] = 0
 		ta[:, :, 1] = 0
-		
-	
+
+
 	ax.imshow(ta,interpolation="none", cmap = "Greens")
 	#plt.colorbar()
 	fig.savefig(data.directory + '/topo_im_' + str('%04d' % (i+rank*local_n)) + '.png')

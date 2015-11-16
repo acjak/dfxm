@@ -26,11 +26,12 @@ print rank, mpisize
 if rank == 0:
 	start = time.time()
 
-path = '/data/id06/inhouse/2015/run5/diamond/ff_mosaicity_tomo'
+path = '/data/id06/inhouse/2015/run5/diamond/ff_mosaicity_tomo_2'
+bg_path = '/data/id06/inhouse/2015/run5/diamond/bg_ff'
 
-filename = 'ff2_'
+filename = 'ff1_'
 #filename2 = 'ff2_'
-sampletitle = filename
+sampletitle = 'mosaicity_1'  # filename
 bg_filename = 'bg_ff_2x2_0p5s_'
 
 datatype = 'mosaicity'
@@ -41,7 +42,7 @@ size = [1000, 1000]
 roi = [poi[0]-size[0]/2, poi[0]+size[0]/2, poi[1]-size[1]/2, poi[1]+size[1]/2]
 
 
-data = GetEdfData(path, filename, bg_filename, roi, datatype)
+data = GetEdfData(path, filename, bg_path, bg_filename, roi, datatype)
 data.setTest(True)
 data.adjustOffset(False)
 
@@ -50,7 +51,7 @@ data.adjustOffset(False)
 #data2.adjustOffset(False)
 
 
-a, b = data.getMetaValues()
+a, b, c = data.getMetaValues()
 #c, d = data2.getMetaValues()
 ab_vals = list(itertools.product(a, b))
 #cd_vals = list(itertools.product(c, d))
@@ -74,26 +75,26 @@ fig.add_axes(ax)
 	#print local_a[i], local_c[i]
 	#index = data.getIndex(float(local_a[i]), float(b[0]))
 	#img0 = data.getImage(index[0], False)
-	
+
 	#print np.mean(img0)
-	
+
 	#index = data2.getIndex(float(local_c[i]), float(d[0]))
 	#img1 = data2.getImage(index[0], False)
-	
+
 	#ta = np.ones((len(img1[:, 0]), len(img1[0, :]), 4),  dtype=np.uint8)*0
-	
+
 	#ta[:, :, 3] = 255
 	#ta[:, :, 0] = 255*img0/np.max(img0)
 	#ta[:, :, 2] = 255*img0/np.max(img0)
 	#ta[:, :, 1] = 255*img1/np.max(img1)
-	
+
 	#if np.mean(img0) < 0.01 and np.mean(img1) < 0.01:
 		#ta[:, :, 3] = 255
 		#ta[:, :, 0] = 0
 		#ta[:, :, 2] = 0
 		#ta[:, :, 1] = 0
-		
-	
+
+
 	#ax.imshow(ta,interpolation="none", cmap = "Greens")
 	##plt.colorbar()
 	#fig.savefig(data.directory + '/topo_im_' + str('%04d' % (i+rank*local_n)) + '.png')
@@ -106,7 +107,7 @@ if rank == 0:
 	hist_array[:, :, 0] = hist
 	data.makeHistogram(hist_array, a, b, 'ff_topo')
 
-	
+
 
 	end = time.time()
 	print "Time:", end-start
