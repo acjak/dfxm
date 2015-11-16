@@ -79,17 +79,17 @@ class GetEdfData(object):
 		self.getBGarray()
 		self.getMetaData()
 		self.makeROIAdjustmentArray()
+		self.makeOutputFolder()
 		if self.rank == 0:
-			self.makeOutputFolder()
 			self.printInfoToFile()
 
 	def makeOutputFolder(self):
 		timestamp = strftime("%d%m%y-%H%M",  localtime())
 		self.directory = 'output/' + timestamp
-		print self.directory
-
-		if not os.path.exists(self.directory):
-			os.makedirs(self.directory)
+		# print self.directory
+		if self.rank == 0:
+			if not os.path.exists(self.directory):
+				os.makedirs(self.directory)
 
 	def printInfoToFile(self):
 		self.infFile = self.directory + "/inf.txt"
@@ -200,44 +200,59 @@ class GetEdfData(object):
 			mot_array = header['motor_mne'].split(' ')
 			motpos_array = header['motor_pos'].split(' ')
 
-			return mot_array, motpos_array
+			det_array = header['counter_mne'].split(' ')
+			detpos_array = header['counter_pos'].split(' ')
+
+			return mot_array, motpos_array, det_array, detpos_array
 
 		if self.rank == 0:
 			print "Reading meta data..."
 
 		for i in range(len(self.data_files)):
-			mot_array, motpos_array = getHeader(i)
+			mot_array, motpos_array, det_array, detpos_array = getHeader(i)
 
 			if self.datatype == 'topotomo':
-				self.meta[i,  0] = round(float(motpos_array[mot_array.index('diffrx')]),  8)
+				self.meta[i, 0] = round(float(motpos_array[mot_array.index('diffrx')]),  8)
 				sn = float(self.data_files[i][-8:-4])
 
-				self.meta[i,  1] = round(float(motpos_array[mot_array.index('diffrz')]),  5)
-				self.meta[i,  2] = sn
+				self.meta[i, 1] = round(float(motpos_array[mot_array.index('diffrz')]),  8)
+				self.meta[i, 2] = sn
+				self.meta[i, 3] = round(float(detpos_array[det_array.index('srcur')]),  5)
 
 			else:
 				sn = float(self.data_files[i][-8:-4])
 				theta = (11.006-10.986)/40
-				self.meta[i,  1] = round(10.986+theta*sn+theta/2,  8)
-				self.meta[i,  2] = sn
+				self.meta[i, 1] = round(10.986+theta*sn+theta/2,  8)
+				self.meta[i, 2] = sn
 
 			if self.datatype == 'strain_eta':
-				self.meta[i,  0] = round(float(motpos_array[mot_array.index('obpitch')]),  8)
+				self.meta[i, 0] = round(float(motpos_array[mot_array.index('obpitch')]),  8)
 
 			if self.datatype == 'strain_tt':
-				self.meta[i,  0] = round(float(motpos_array[mot_array.index('obyaw')]),  8)
+				self.meta[i, 0] = round(float(motpos_array[mot_array.index('obyaw')]),  8)
+				self.meta[i, 1] = round(float(motpos_array[mot_array.index('diffrz')]),  8)
+				self.meta[i, 2] = round(float(motpos_array[mot_array.index('diffrx')]),  8)
+
+			if self.datatype == 'mosaicity':
+				self.meta[i, 0] = round(float(motpos_array[mot_array.index('samry')]),  8)
+				self.meta[i, 1] = round(float(motpos_array[mot_array.index('samrz')]),  8)
+				self.meta[i, 2] = round(float(motpos_array[mot_array.index('diffrx')]),  8)
 
 
 
 
 		alphavals = sorted(list(set(self.meta[:,  0])))
 		betavals = sorted(list(set(self.meta[:,  1])))
+		gammavals = sorted(list(set(self.meta[:,  2])))
 		self.alphavals = np.zeros((len(alphavals)))
 		self.betavals = np.zeros((len(betavals)))
+		self.gammavals = np.zeros((len(gammavals)))
 		for i in range(len(alphavals)):
 			self.alphavals[i] = float(alphavals[i])
 		for i in range(len(betavals)):
 			self.betavals[i] = float(betavals[i])
+		for i in range(len(gammavals)):
+			self.gammavals[i] = float(gammavals[i])
 		if self.rank == 0:
 			print "Meta data from %s files read." % str(len(self.data_files))
 
@@ -279,7 +294,8 @@ class GetEdfData(object):
 		return index
 
 	def getImage(self, index, full):
-		tmpfile = 'output/tmp/img_' + str(index) + '.npy'
+		# tmpfile = 'output/tmp/img_' + str(index) + '.npy'
+		tmpfile = 'blah'
 		file_with_path = self.path + '/' + self.data_files[index]
 		if self.rank == 0:
 			print file_with_path
@@ -295,12 +311,15 @@ class GetEdfData(object):
 
 			if full is True:
 				print np.shape(self.bg_combined_full)
-				im = img.GetData(0).astype(np.int64)-self.bg_combined_full
+				im = img.GetData(0).astype(np.int64)#-self.bg_combined_full
 			else:
 				im = img.GetData(0).astype(np.int64)[roi[2]:roi[3], roi[0]:roi[1]]-self.bg_combined
+				#im = img.GetData(0).astype(np.int64)[roi[2]:roi[3], roi[0]:roi[1]]
+			# np.save(tmpfile,im)
+			im = self.cleanImage(im) /self.meta[index, 3]
 
-			im = self.cleanImage(im)
-			np.save(tmpfile,im)
+		#else:
+		#	im = np.load(tmpfile)
 		return im
 
 	def cleanImage(self, img):
@@ -383,7 +402,8 @@ class GetEdfData(object):
 		hist = np.zeros((len(tt_vals), len(theta_vals)))
 		mean = self.getMean()
 		for i in range(len(self.meta[:, 0])):
-			hist[tt_vals.index(self.meta[i, 0]), theta_vals.index(self.meta[i, 1])] = mean[i]
+			if self.meta[i,2] == self.gammavals[8]:
+				hist[tt_vals.index(self.meta[i, 0]), theta_vals.index(self.meta[i, 1])] = mean[i]
 
 		return hist,  t2t_grid_x,  t2t_grid_y
 
@@ -407,6 +427,9 @@ class GetEdfData(object):
 				ax.set_ylabel('Eta')
 			if self.datatype == 'topotomo':
 				ax.set_ylabel('Phi')
+			if self.datatype == 'mosaicity':
+				ax.set_xlabel('samry')
+				ax.set_ylabel('samrz')
 		else:
 			fig, ax = plt.subplots(ncols=len(hist[0, 0, :]), figsize=(6 * len(hist[0, 0, :]), 6))
 			for i in range(len(hist[0, 0, :])):
