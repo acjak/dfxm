@@ -38,10 +38,13 @@ from os import listdir
 from os.path import isfile,  join
 
 from time import localtime,  strftime
+
 import matplotlib
+matplotlib.use('Agg')
 import matplotlib.pylab as plt
 
-# import seaborn as sns
+
+#import seaborn as sns
 from mpi4py import MPI
 
 import time
@@ -217,7 +220,14 @@ class GetEdfData(object):
 			return mot_array, motpos_array, det_array, detpos_array
 
 		if os.path.isfile(metadatafile) == True:
-			self.meta = np.loadtxt(metadatafile)
+			while True:
+				time.sleep(0.5)
+				try:
+					self.meta = np.loadtxt(metadatafile)
+					if len(self.meta) == 35557:
+						break
+				except ValueError:
+					pass
 
 
 		else:
@@ -251,6 +261,7 @@ class GetEdfData(object):
 					self.meta[i, 0] = round(float(motpos_array[mot_array.index('obyaw')]),  8)
 					self.meta[i, 1] = round(float(motpos_array[mot_array.index('diffrz')]),  8)
 					self.meta[i, 2] = round(float(motpos_array[mot_array.index('diffrx')]),  8)
+					self.meta[i, 3] = round(float(detpos_array[det_array.index('srcur')]),  5)
 
 				if self.datatype == 'mosaicity':
 					self.meta[i, 0] = round(float(motpos_array[mot_array.index('samry')]),  8)
@@ -272,6 +283,11 @@ class GetEdfData(object):
 			self.betavals[i] = float(betavals[i])
 		for i in range(len(gammavals)):
 			self.gammavals[i] = float(gammavals[i])
+
+		self.alpha0 = self.alphavals[len(self.alphavals)/2]
+		self.beta0 = self.betavals[len(self.betavals)/2]
+		self.gamma0 = self.gammavals[len(self.gammavals)/2]
+
 		if self.rank == 0:
 			print "Meta data from %s files read." % str(len(self.data_files))
 
@@ -301,7 +317,7 @@ class GetEdfData(object):
 		except RuntimeError:
 			print "Error - curve_fit failed"
 
-	def getIndex(self, alpha, beta):
+	def getIndex(self, alpha, beta, gamma):
 		if alpha != -10000 and beta == -10000:
 			index = np.where(self.meta[:, 0] == alpha)
 		if alpha == -10000 and beta != -10000:
@@ -309,7 +325,9 @@ class GetEdfData(object):
 		if alpha != -10000 and beta != -10000:
 			i1 = np.where(self.meta[:, 0] == alpha)
 			i2 = np.where(self.meta[:, 1] == beta)
-			index = list(set(i1[0]).intersection(i2[0]))
+			index_ab = list(set(i1[0]).intersection(i2[0]))
+			i3 = np.where(self.meta[:, 2] == gamma)
+			index = list(set(index_ab).intersection(i3[0]))
 		return index
 
 	def getImage(self, index, full):
@@ -335,7 +353,8 @@ class GetEdfData(object):
 				im = img.GetData(0).astype(np.int64)[roi[2]:roi[3], roi[0]:roi[1]]-self.bg_combined
 				# im = img.GetData(0).astype(np.int64)[roi[2]:roi[3], roi[0]:roi[1]]
 			# np.save(tmpfile,im)
-			# im = self.cleanImage(im)/self.meta[index, 3]
+			#print "SRCUR:" + str(self.meta[index, 3])
+			im = self.cleanImage(im) # /self.meta[index, 3]
 
 		# else:
 		# im = np.load(tmpfile)
@@ -473,6 +492,57 @@ class GetEdfData(object):
 			fig.savefig(self.directory + '/%s_%s.pdf' % (savefilename, self.datatype))
 		return fig, ax
 
+	def makeImgArray(self, index, xpos, savefilename):
+		img = self.getImage(index[0], False)
+		npix = len(img[:, 0])*len(img[0, :])
+		self.imgarray = np.zeros((len(index), len(img[:, 0]), len(img[0, :])))
+
+		def addToArray(index_part):
+			imgarray_part = np.zeros((len(index_part), len(img[:, 0]), len(img[0, :])))
+			for i in range(len(index_part)):
+				print "Adding image " + str(i) + " to array. (rank " + str(self.rank) + ').'
+				imgarray_part[i, :, :] = self.getImage(index_part[i], False)
+
+			imgarray_part[0, 0, 0] = self.rank
+
+			return imgarray_part
+
+		# Chose part of data set for a specific CPU (rank).
+		local_n = len(index)/self.size
+		istart = self.rank*local_n
+		istop = (self.rank+1)*local_n
+		index_part = index[istart:istop]
+		# local_data = alldata[:, :, istart:istop]
+
+		# Calculate strain on part of data set.
+		imgarray_part = addToArray(index_part)
+
+		# self.imgarray = addToArray(index)
+
+		# CPU 0 (rank 0) combines data parts from other CPUs.
+		if self.rank == 0:
+			# Make empty arrays to fill in data from other cores.
+			recv_buffer = np.zeros((np.shape(imgarray_part)))
+			# strainpic = np.zeros((np.shape(img)))
+
+			datarank = imgarray_part[0, 0, 0]
+			imgarray_part[0, 0, 0] = 0
+			self.imgarray[istart:istop, :, :] = imgarray_part
+			for i in range(1,  self.size):
+				self.comm.Recv(recv_buffer,  MPI.ANY_SOURCE)
+				datarank = int(recv_buffer[0, 0, 0])
+				recv_buffer[0, 0, 0] = 0
+				self.imgarray[datarank*local_n:(datarank+1)*local_n, :, :] = recv_buffer
+
+			for i in range(self.size-1):
+				self.comm.Send(self.imgarray, dest=(i+1))
+
+		else:
+			# all other process send their result
+			self.comm.Send(imgarray_part,dest=0)
+			self.comm.Recv(self.imgarray, MPI.ANY_SOURCE)
+
+
 	def makePlotArray(self, index, bins, xpos, savefilename):
 		# sns.set_style("white")
 		# sns.set_context("paper")
@@ -482,32 +552,32 @@ class GetEdfData(object):
 		xoff = np.zeros((len(index[:, 0])))
 		yoff = np.zeros((len(index[:, 0])))
 
-		xoff[2] = -15
-		xoff[8] = -20
-		xoff[9] = -75
-		xoff[10] = -80
-		xoff[11] = -45
-		xoff[12] = -50
+		# xoff[2] = -15
+		# xoff[8] = -20
+		# xoff[9] = -75
+		# xoff[10] = -80
+		# xoff[11] = -45
+		# xoff[12] = -50
 
 		img = self.getImage(index[0, 0], False)
-		img = self.rebin(img, bins)
+		# img = self.rebin(img, bins)
 		npix = len(img[:, 0])*len(img[0, :])
-		self.pixarr = np.zeros((len(index[:, 0]), npix))
+		# self.pixarr = np.zeros((len(index[:, 0]), npix))
 		self.imgarray = np.zeros((len(index[:, 0]), len(img[:, 0]), len(img[0, :])))
 
 		if len(index[0, :]) == 1:
 			fig_array, axarr = plt.subplots(nrows=2, ncols=len(index[:, 0]), figsize=(16, 8))
 			for i in range(len(index[:, 0])):
-				self.adjustROI(xoff[i], yoff[i])
+				# self.adjustROI(xoff[i], yoff[i])
 				if self.rank == 0:
 					print i
 				print self.roi
 				img1 = self.getImage(index[i, 0], False)
-				img1 = self.rebin(img1, bins)
+				# img1 = self.rebin(img1, bins)
 
 				self.imgarray[i, :, :] = img1
 
-				self.makeROIAdjustmentArray()
+				# self.makeROIAdjustmentArray()
 
 				if self.rank == 0:
 					x = int(len(img1[0, :])*xpos)
@@ -521,7 +591,7 @@ class GetEdfData(object):
 					axarr[0, i].imshow(ta)
 					axarr[0, i].xaxis.set_major_formatter(plt.NullFormatter())
 					axarr[0, i].yaxis.set_major_formatter(plt.NullFormatter())
-					axarr[0, i].set_title('%.4f %.4f' % (10.992-self.meta[index[i, 0], 1], self.meta[index[i, 0], 0]))
+					axarr[0, i].set_title('%.4f %.4f' % (self.beta0-self.meta[index[i, 0], 1], self.meta[index[i, 0], 0]))
 					axarr[0, i].autoscale(False)
 					axarr[0, i].plot([x, x], [0, len(img1[:, 0])], color='magenta')
 
@@ -701,11 +771,13 @@ class GetEdfData(object):
 		length = math.sqrt((x1-x0)**2+(y1-y0)**2)
 		return zi, length
 
-	def makeStrainArrayMPI(self, alldata, bins, length, xr):
+	def makeStrainArrayMPI(self, alldata, bins, xr):
 		print self.rank, self.size
 
+		#print alldata[:, 3, 3]
+
 		def strainRange(data_part, xr):
-			strainpic = np.zeros((np.shape(data_part[0, :, :])))
+			strainpic = np.zeros((np.shape(data_part[0, :, :])), dtype='float64')
 
 			for i in range(len(data_part[0, :, 0])):
 				if self.rank == 0 and 10*float(i)/len(data_part[0, :, 0]) % 1 == 0.0:
@@ -714,13 +786,17 @@ class GetEdfData(object):
 				for j in range(len(data_part[0, 0, :])):
 					try:
 						popt, pcov = self.fitGaussian(xr, data_part[:, i, j])
-						strain = popt[1]/(10.992)
-						if strain >= -0.0002 and strain <= 0.0002:
+						strain = popt[1]/(self.beta0)-0.00003
+						# if self.rank == 0:
+						# 	print strain, popt[1], data_part[:, i, j]
+						if strain >= -0.0001 and strain <= 0.0001:
 							strainpic[i, j] = strain
 					except TypeError:
 						print i, j, "Gaussian could not be fitted."
 
 			strainpic[0, 0] = self.rank
+			# print self.rank, np.shape(strainpic), strainpic.dtype
+			# print strainpic
 			return strainpic
 
 		ypix = (self.roi[1]-self.roi[0])/bins
@@ -737,23 +813,33 @@ class GetEdfData(object):
 		# CPU 0 (rank 0) combines data parts from other CPUs.
 		if self.rank == 0:
 			# Make empty arrays to fill in data from other cores.
-			recv_buffer = np.zeros((np.shape(alldata[:, :, istart:istop])))
-			strainpic = np.zeros((np.shape(alldata[0, :, :])))
+			recv_buffer = np.zeros((np.shape(alldata[0, :, istart:istop])), dtype='float64')
+			# recv_buffer = np.zeros((9,1), dtype='float64')
+			strainpic = np.zeros((np.shape(alldata[0, :, :])), dtype='float64')
 
 			datarank = strainpic_part[0, 0]
 			strainpic_part[0, 0] = 0
 			strainpic[:, istart:istop] = strainpic_part
 			for i in range(1,  self.size):
-				self.comm.Recv(recv_buffer,  MPI.ANY_SOURCE)
-				datarank = recv_buffer[0][0, 0]
-				recv_buffer[0][0, 0] = 0
-				strainpic[:, datarank*local_n:(datarank+1)*local_n] = recv_buffer[0]
+				# print np.shape(recv_buffer), np.shape(strainpic_part), recv_buffer.dtype, strainpic_part.dtype
+				try:
+					# print self.rank
+					self.comm.Recv(recv_buffer,  MPI.ANY_SOURCE)
+					datarank = int(recv_buffer[0, 0])
+					# print datarank, recv_buffer
+					recv_buffer[0, 0] = 0
+					strainpic[:, datarank*local_n:(datarank+1)*local_n] = recv_buffer
+				except Exception:
+					print "MPI error."
+
+
 		else:
 			# all other process send their result
-			self.comm.Send(strainpic_part)
+			self.comm.Send(strainpic_part,dest=0)
 
 		# root process prints results
 		if self.comm.rank == 0:
+		# 	print strainpic
 			return strainpic
 
 	def makeGaussArrayMPI(self, alldata, bins, length, xr):
@@ -938,16 +1024,16 @@ class GetEdfData(object):
 	def plotStrain(self, strainpic):
 		import matplotlib.ticker as ticker
 		# sns.set_context("talk")
-		figstrain, axstrain = plt.subplots(2, 1)
-		# im = axstrain[0].imshow(strainpic, cmap="BrBG")
-		# im2 = axstrain[1].imshow(self.imgarray[2, :, :], cmap="Greens")
+
+		print "strainpic dimensions: " + str(np.shape(strainpic))
 
 		gradient = self.adjustGradient()
 
-		# im = axstrain[0].imshow(strainpic, cmap="BrBG")
-		im = axstrain[0].imshow(strainpic+gradient, cmap="BrBG")
+		figstrain, axstrain = plt.subplots(2, 1)
 
-		im2 = axstrain[1].imshow(self.imgarray[2, :, :], cmap="Greens")
+		im = axstrain[0].imshow(strainpic, cmap="BrBG")
+		# im = axstrain[0].imshow(strainpic+gradient, cmap="BrBG")
+		im2 = axstrain[1].imshow(self.imgarray[len(self.imgarray[:,0,0])/2-4, :, :], cmap="Greens")
 
 		axstrain[0].set_title("%g %g %g %g" % (self.roi[0], self.roi[1], self.roi[2], self.roi[3]))
 		axstrain[0].set_title(r'$\epsilon_{220}$')
@@ -960,12 +1046,12 @@ class GetEdfData(object):
 		figstrain.subplots_adjust(right=0.8)
 		cbar_ax1 = figstrain.add_axes([0.85,  0.55,  0.02,  0.35])
 		cbar_ax2 = figstrain.add_axes([0.85,  0.1,  0.02,  0.35])
-		clb = figstrain.colorbar(im, cax=cbar_ax1, format=ticker.FuncFormatter(fmt))
+		clb = figstrain.colorbar(im, cax=cbar_ax1)  # , format=ticker.FuncFormatter(fmt))
 		figstrain.colorbar(im2, cax=cbar_ax2)
 
-		linestart = [275, 110]
-		linestop = [275, 175]
-		clb.set_clim(-0.00013, 0.00013)
+		linestart = [25, 80]
+		linestop = [25, 150]
+		clb.set_clim(-0.00004, 0.00004)
 		axstrain[0].autoscale(False)
 		axstrain[0].plot([linestart[0], linestop[0]], [linestart[1], linestop[1]])
 
