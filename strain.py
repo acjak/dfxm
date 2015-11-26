@@ -9,7 +9,7 @@ import numpy as np
 import matplotlib.pylab as plt
 # import seaborn as sns
 
-import scipy.ndimage
+# import scipy.ndimage
 import itertools
 
 import warnings
@@ -41,7 +41,7 @@ def diagonalPlot(meta, alpha, beta, hist, bins, xpos, datatype, rank):
 	startpos = [3, 6]
 	startpos2 = [6, 34]
 	length = 13
-	show_index = 2
+	# show_index = 2
 	index = np.zeros((length, 1), dtype=np.int16)
 
 	i1 = np.zeros((2, 2, length))
@@ -65,7 +65,7 @@ def diagonalPlot(meta, alpha, beta, hist, bins, xpos, datatype, rank):
 	# for i in range(len(data.imgarray[:, 0, 0])):
 	# 	ax2.imshow(data.imgarray[i, :, :])
 	# 	fig2.savefig('output/diag_oldfilter_compare_%g.png' % i)
-		# fig2.clf()
+	#   fig2.clf()
 
 	if rank == 0:
 		# sns.set_style("white")
@@ -115,7 +115,6 @@ def horizontalPlot(meta, alpha, beta, hist, bins, xpos, datatype, rank):
 	return bins, length, xr
 
 
-
 def overlapImg(meta, a, b, hist, pos1, pos2):
 	pos1 = [10, 20]
 	index = data.getIndex(float(data.alphavals[pos1[0]]), float(data.betavals[pos1[1]]))
@@ -153,6 +152,7 @@ def overlapImg(meta, a, b, hist, pos1, pos2):
 	print bestsum,  bestindex
 
 	return bestindex
+
 
 def makeGrid(meta, a, b):
 
@@ -209,7 +209,7 @@ bg_filename = 'bg1_5s_'
 datatype = 'strain_tt'
 
 
-#poi = [750, 750]
+# poi = [750, 750]
 # size = [800, 200]
 
 poi = [1250, 1150]

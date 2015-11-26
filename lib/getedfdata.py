@@ -44,7 +44,7 @@ matplotlib.use('Agg')
 import matplotlib.pylab as plt
 
 
-#import seaborn as sns
+# import seaborn as sns
 from mpi4py import MPI
 
 import time
@@ -68,7 +68,7 @@ class GetEdfData(object):
 		in any information that is necessary.
 	"""
 
-	def __init__(self,  path, filename, bg_path, bg_filename, roi, datatype):
+	def __init__(self,  path, filename, bg_path, bg_filename, roi, datatype, test_switch):
 		super(GetEdfData,  self).__init__()
 
 		self.comm = MPI.COMM_WORLD
@@ -80,7 +80,9 @@ class GetEdfData(object):
 		self.path = path
 		self.bg_path = bg_path
 		self.roi = roi
-		self.makeOutputFolder()
+		self.ts = test_switch
+		if test_switch:
+			self.makeOutputFolder()
 
 		self.getFilelists(filename, bg_filename)
 
@@ -91,7 +93,7 @@ class GetEdfData(object):
 		self.getBGarray()
 		self.getMetaData()
 		self.makeROIAdjustmentArray()
-		if self.rank == 0:
+		if self.rank == 0 and self.ts:
 			self.printInfoToFile()
 
 	def makeOutputFolder(self):
@@ -203,73 +205,71 @@ class GetEdfData(object):
 		self.getMeanData()
 		return self.data_mean
 
+	def getHeader(self, filenumber):
+		file_with_path = self.path + '/' + self.data_files[filenumber]
+		img = EdfFile.EdfFile(file_with_path)
+		header = img.GetHeader(0)
+
+		mot_array = header['motor_mne'].split(' ')
+		motpos_array = header['motor_pos'].split(' ')
+
+		det_array = header['counter_mne'].split(' ')
+		detpos_array = header['counter_pos'].split(' ')
+
+		return mot_array, motpos_array, det_array, detpos_array
+
+	def readMetaFile(self, metadatafile):
+		while True:
+			time.sleep(0.5)
+			try:
+				self.meta = np.loadtxt(metadatafile)
+				if len(self.meta) == 35557:
+					break
+			except ValueError:
+				pass
+
+	def makeMetaArray(self):
+		self.meta = np.zeros((len(self.data_files),  4))
+
+		if self.rank == 0:
+			print "Reading meta data..."
+
+		for i in range(len(self.data_files)):
+			mot_array, motpos_array, det_array, detpos_array = self.getHeader(i)
+
+			if self.datatype == 'topotomo':
+				self.meta[i, 0] = round(float(motpos_array[mot_array.index('diffrx')]),  8)
+				self.meta[i, 1] = round(float(motpos_array[mot_array.index('diffrz')]),  8)
+				self.meta[i, 2] = float(self.data_files[i][-8:-4])
+				self.meta[i, 3] = round(float(detpos_array[det_array.index('srcur')]),  5)
+
+			if self.datatype == 'strain_eta':
+				theta = (11.006-10.986)/40
+				self.meta[i, 0] = round(float(motpos_array[mot_array.index('obpitch')]),  8)
+				self.meta[i, 1] = round(10.986+theta*(float(self.data_files[i][-8:-4]))+theta/2, 8)
+				self.meta[i, 2] = float(self.data_files[i][-8:-4])
+
+			if self.datatype == 'strain_tt':
+				self.meta[i, 0] = round(float(motpos_array[mot_array.index('obyaw')]),  8)
+				self.meta[i, 1] = round(float(motpos_array[mot_array.index('diffrz')]),  8)
+				self.meta[i, 2] = round(float(motpos_array[mot_array.index('diffrx')]),  8)
+				self.meta[i, 3] = round(float(detpos_array[det_array.index('srcur')]),  5)
+
+			if self.datatype == 'mosaicity':
+				self.meta[i, 0] = round(float(motpos_array[mot_array.index('samry')]),  8)
+				self.meta[i, 1] = round(float(motpos_array[mot_array.index('samrz')]),  8)
+				self.meta[i, 2] = round(float(motpos_array[mot_array.index('diffrx')]),  8)
+				self.meta[i, 3] = round(float(detpos_array[det_array.index('srcur')]),  5)
+
 	def getMetaData(self):
 		metadatafile = 'output/datameta_%s.txt' % self.dirhash
 
-		def getHeader(filenumber):
-			file_with_path = self.path + '/' + self.data_files[i]
-			img = EdfFile.EdfFile(file_with_path)
-			header = img.GetHeader(0)
-
-			mot_array = header['motor_mne'].split(' ')
-			motpos_array = header['motor_pos'].split(' ')
-
-			det_array = header['counter_mne'].split(' ')
-			detpos_array = header['counter_pos'].split(' ')
-
-			return mot_array, motpos_array, det_array, detpos_array
-
 		if os.path.isfile(metadatafile) == True:
-			while True:
-				time.sleep(0.5)
-				try:
-					self.meta = np.loadtxt(metadatafile)
-					if len(self.meta) == 35557:
-						break
-				except ValueError:
-					pass
-
+			self.readMetaFile(metadatafile)
 
 		else:
-			self.meta = np.zeros((len(self.data_files),  4))
-
-
-			if self.rank == 0:
-				print "Reading meta data..."
-
-			for i in range(len(self.data_files)):
-				mot_array, motpos_array, det_array, detpos_array = getHeader(i)
-
-				if self.datatype == 'topotomo':
-					self.meta[i, 0] = round(float(motpos_array[mot_array.index('diffrx')]),  8)
-					sn = float(self.data_files[i][-8:-4])
-
-					self.meta[i, 1] = round(float(motpos_array[mot_array.index('diffrz')]),  8)
-					self.meta[i, 2] = sn
-					self.meta[i, 3] = round(float(detpos_array[det_array.index('srcur')]),  5)
-
-				else:
-					sn = float(self.data_files[i][-8:-4])
-					theta = (11.006-10.986)/40
-					self.meta[i, 1] = round(10.986+theta*sn+theta/2,  8)
-					self.meta[i, 2] = sn
-
-				if self.datatype == 'strain_eta':
-					self.meta[i, 0] = round(float(motpos_array[mot_array.index('obpitch')]),  8)
-
-				if self.datatype == 'strain_tt':
-					self.meta[i, 0] = round(float(motpos_array[mot_array.index('obyaw')]),  8)
-					self.meta[i, 1] = round(float(motpos_array[mot_array.index('diffrz')]),  8)
-					self.meta[i, 2] = round(float(motpos_array[mot_array.index('diffrx')]),  8)
-					self.meta[i, 3] = round(float(detpos_array[det_array.index('srcur')]),  5)
-
-				if self.datatype == 'mosaicity':
-					self.meta[i, 0] = round(float(motpos_array[mot_array.index('samry')]),  8)
-					self.meta[i, 1] = round(float(motpos_array[mot_array.index('samrz')]),  8)
-					self.meta[i, 2] = round(float(motpos_array[mot_array.index('diffrx')]),  8)
-					self.meta[i, 3] = round(float(detpos_array[det_array.index('srcur')]),  5)
-
-		np.savetxt(metadatafile,  self.meta)
+			self.makeMetaArray()
+			np.savetxt(metadatafile,  self.meta)
 
 		alphavals = sorted(list(set(self.meta[:, 0])))
 		betavals = sorted(list(set(self.meta[:, 1])))
@@ -353,8 +353,8 @@ class GetEdfData(object):
 				im = img.GetData(0).astype(np.int64)[roi[2]:roi[3], roi[0]:roi[1]]-self.bg_combined
 				# im = img.GetData(0).astype(np.int64)[roi[2]:roi[3], roi[0]:roi[1]]
 			# np.save(tmpfile,im)
-			#print "SRCUR:" + str(self.meta[index, 3])
-			im = self.cleanImage(im) # /self.meta[index, 3]
+			# print "SRCUR:" + str(self.meta[index, 3])
+			im = self.cleanImage(im)  # /self.meta[index, 3]
 
 		# else:
 		# im = np.load(tmpfile)
@@ -390,13 +390,13 @@ class GetEdfData(object):
 
 			imgb = scipy.ndimage.interpolation.rotate(imgr, -rot)
 
-			idx0 = [np.floor((len(imgb[:,0])-len(img[:,0]))/2),np.floor((len(imgb[0,:])-len(img[0,:]))/2)]
-			idx1 = [np.floor((len(imgb[:,0])+len(img[:,0]))/2),np.floor((len(imgb[0,:])+len(img[0,:]))/2)]
+			idx0 = [np.floor((len(imgb[:, 0])-len(img[:, 0]))/2), np.floor((len(imgb[0, :])-len(img[0, :]))/2)]
+			idx1 = [np.floor((len(imgb[:, 0])+len(img[:, 0]))/2), np.floor((len(imgb[0, :])+len(img[0, :]))/2)]
 
-			imgb = imgb[idx0[0]:idx1[0],idx0[1]:idx1[1]]
+			imgb = imgb[idx0[0]:idx1[0], idx0[1]:idx1[1]]
 
-			stack[:,:,n] = imgb
-		return np.amin(stack,2)
+			stack[:, :, n] = imgb
+		return np.amin(stack, 2)
 
 	def printMeta(self):
 		print "Alpha values:\n",  self.alphavals
@@ -494,7 +494,7 @@ class GetEdfData(object):
 
 	def makeImgArray(self, index, xpos, savefilename):
 		img = self.getImage(index[0], False)
-		npix = len(img[:, 0])*len(img[0, :])
+		# npix = len(img[:, 0])*len(img[0, :])
 		self.imgarray = np.zeros((len(index), len(img[:, 0]), len(img[0, :])))
 
 		def addToArray(index_part):
@@ -539,9 +539,8 @@ class GetEdfData(object):
 
 		else:
 			# all other process send their result
-			self.comm.Send(imgarray_part,dest=0)
+			self.comm.Send(imgarray_part, dest=0)
 			self.comm.Recv(self.imgarray, MPI.ANY_SOURCE)
-
 
 	def makePlotArray(self, index, bins, xpos, savefilename):
 		# sns.set_style("white")
@@ -549,8 +548,8 @@ class GetEdfData(object):
 
 		# diff = np.zeros((len(index[:, 0])))
 
-		xoff = np.zeros((len(index[:, 0])))
-		yoff = np.zeros((len(index[:, 0])))
+		# xoff = np.zeros((len(index[:, 0])))
+		# yoff = np.zeros((len(index[:, 0])))
 
 		# xoff[2] = -15
 		# xoff[8] = -20
@@ -561,7 +560,7 @@ class GetEdfData(object):
 
 		img = self.getImage(index[0, 0], False)
 		# img = self.rebin(img, bins)
-		npix = len(img[:, 0])*len(img[0, :])
+		# npix = len(img[:, 0])*len(img[0, :])
 		# self.pixarr = np.zeros((len(index[:, 0]), npix))
 		self.imgarray = np.zeros((len(index[:, 0]), len(img[:, 0]), len(img[0, :])))
 
@@ -774,8 +773,6 @@ class GetEdfData(object):
 	def makeStrainArrayMPI(self, alldata, bins, xr):
 		print self.rank, self.size
 
-		#print alldata[:, 3, 3]
-
 		def strainRange(data_part, xr):
 			strainpic = np.zeros((np.shape(data_part[0, :, :])), dtype='float64')
 
@@ -787,16 +784,12 @@ class GetEdfData(object):
 					try:
 						popt, pcov = self.fitGaussian(xr, data_part[:, i, j])
 						strain = popt[1]/(self.beta0)-0.00003
-						# if self.rank == 0:
-						# 	print strain, popt[1], data_part[:, i, j]
 						if strain >= -0.0001 and strain <= 0.0001:
 							strainpic[i, j] = strain
 					except TypeError:
 						print i, j, "Gaussian could not be fitted."
-
 			strainpic[0, 0] = self.rank
-			# print self.rank, np.shape(strainpic), strainpic.dtype
-			# print strainpic
+
 			return strainpic
 
 		ypix = (self.roi[1]-self.roi[0])/bins
@@ -814,32 +807,26 @@ class GetEdfData(object):
 		if self.rank == 0:
 			# Make empty arrays to fill in data from other cores.
 			recv_buffer = np.zeros((np.shape(alldata[0, :, istart:istop])), dtype='float64')
-			# recv_buffer = np.zeros((9,1), dtype='float64')
 			strainpic = np.zeros((np.shape(alldata[0, :, :])), dtype='float64')
 
 			datarank = strainpic_part[0, 0]
 			strainpic_part[0, 0] = 0
 			strainpic[:, istart:istop] = strainpic_part
 			for i in range(1,  self.size):
-				# print np.shape(recv_buffer), np.shape(strainpic_part), recv_buffer.dtype, strainpic_part.dtype
 				try:
-					# print self.rank
 					self.comm.Recv(recv_buffer,  MPI.ANY_SOURCE)
 					datarank = int(recv_buffer[0, 0])
-					# print datarank, recv_buffer
 					recv_buffer[0, 0] = 0
 					strainpic[:, datarank*local_n:(datarank+1)*local_n] = recv_buffer
 				except Exception:
 					print "MPI error."
 
-
 		else:
 			# all other process send their result
-			self.comm.Send(strainpic_part,dest=0)
+			self.comm.Send(strainpic_part, dest=0)
 
 		# root process prints results
 		if self.comm.rank == 0:
-		# 	print strainpic
 			return strainpic
 
 	def makeGaussArrayMPI(self, alldata, bins, length, xr):
@@ -1022,7 +1009,7 @@ class GetEdfData(object):
 		return gradient
 
 	def plotStrain(self, strainpic):
-		import matplotlib.ticker as ticker
+		# import matplotlib.ticker as ticker
 		# sns.set_context("talk")
 
 		print "strainpic dimensions: " + str(np.shape(strainpic))
@@ -1033,7 +1020,7 @@ class GetEdfData(object):
 
 		im = axstrain[0].imshow(strainpic, cmap="BrBG")
 		# im = axstrain[0].imshow(strainpic+gradient, cmap="BrBG")
-		im2 = axstrain[1].imshow(self.imgarray[len(self.imgarray[:,0,0])/2-4, :, :], cmap="Greens")
+		im2 = axstrain[1].imshow(self.imgarray[len(self.imgarray[:, 0, 0])/2-4, :, :], cmap="Greens")
 
 		axstrain[0].set_title("%g %g %g %g" % (self.roi[0], self.roi[1], self.roi[2], self.roi[3]))
 		axstrain[0].set_title(r'$\epsilon_{220}$')
@@ -1084,7 +1071,6 @@ if __name__ == '__main__':
 
 	if rank == 0:
 		start = time.time()
-
 
 	path = '/Users/andcj/hxrm_data/disl_may_2015/dislocations/strain'
 
