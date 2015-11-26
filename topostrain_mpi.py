@@ -2,6 +2,7 @@
 """blah."""
 
 from lib.getedfdata import *
+from lib.dfxm import *
 from lib.gauss import *
 # import numpy as np
 
@@ -42,15 +43,24 @@ bg_filename = 'bg_ff_2x2_0p5s_'
 datatype = 'strain_tt'
 
 poi = [400, 675]
-size = [600, 600]
+size = [10, 10]
 
 diffrx_pos = 31
 
+test_switch = False
+
 roi = [poi[0]-size[0]/2, poi[0]+size[0]/2, poi[1]-size[1]/2, poi[1]+size[1]/2]
 
-data = GetEdfData(path, filename, bg_path, bg_filename, roi, datatype)
+data = GetEdfData(path, filename, bg_path, bg_filename, roi, datatype, test_switch)
 data.setTest(True)
 data.adjustOffset(False)
+
+try:
+	directory = data.directory
+except AttributeError:
+	directory = 0
+
+tools = DFXM(directory, roi, datatype, test_switch)
 
 a, b, c = data.getMetaValues()
 ab_vals = list(itertools.product(a, b))
@@ -86,14 +96,15 @@ def makeIndexList(a, b, c, diffrx_pos):
 	with warnings.catch_warnings():
 		warnings.simplefilter("ignore")
 		data.makeImgArray(index_list, 50, 'linetrace')
-		return data.makeStrainArrayMPI(data.imgarray, 1, xr), index_list
+		return tools.makeStrainArrayMPI(data.imgarray, 1, xr, data.beta0), index_list
 
 
 strainpic, index_list = makeIndexList(a, b, c, diffrx_pos)
 
 if rank == 0:
-	plotImageArray(diffrx_pos)
-	data.plotStrain(strainpic)
+	if test_switch:
+		plotImageArray(diffrx_pos)
+		tools.plotStrain(strainpic, data.imgarray)
 
 	end = time.time()
 	print "Time:", end-start, "seconds."

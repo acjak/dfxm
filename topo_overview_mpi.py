@@ -2,6 +2,7 @@
 """blah."""
 
 from lib.getedfdata import *
+from lib.dfxm import *
 from lib.gauss import *
 import numpy as np
 
@@ -46,11 +47,14 @@ size = [500, 500]
 diffrz_pos1 = 13
 diffrz_pos2 = 17
 
+test_switch = True
+
 roi = [poi[0]-size[0]/2, poi[0]+size[0]/2, poi[1]-size[1]/2, poi[1]+size[1]/2]
 
-data = GetEdfData(path, filename, bg_path, bg_filename, roi, datatype, True)
+data = GetEdfData(path, filename, bg_path, bg_filename, roi, datatype, test_switch)
 data.setTest(True)
 data.adjustOffset(False)
+
 
 a, b, c = data.getMetaValues()
 ab_vals = list(itertools.product(a, b))
