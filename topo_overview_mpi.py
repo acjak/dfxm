@@ -55,6 +55,7 @@ data = GetEdfData(path, filename, bg_path, bg_filename, roi, datatype, test_swit
 data.setTest(True)
 data.adjustOffset(False)
 
+# tools = dfxm(roi, datatype, test_switch)
 
 a, b, c = data.getMetaValues()
 ab_vals = list(itertools.product(a, b))
