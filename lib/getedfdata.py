@@ -542,8 +542,6 @@ class GetEdfData(object):
 	# 		fig.savefig(self.directory + '/%s_%s.pdf' % (savefilename, self.datatype))
 	# 	return fig, ax
 
-
-
 	# def makePlotArray(self, index, bins, xpos, savefilename):
 	# 	# sns.set_style("white")
 	# 	# sns.set_context("paper")
