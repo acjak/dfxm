@@ -200,6 +200,17 @@ class DFXM(object):
 		# sns.set_style("white")
 		# sns.set_context("paper")
 
+		labelx = 'Theta'
+		if self.datatype == 'strain_tt':
+			labely = '2Theta'
+		elif self.datatype == 'strain_eta':
+			labely = 'Eta'
+		elif self.datatype == 'topotomo':
+			labely = 'Phi'
+		elif self.datatype == 'mosaicity':
+			labelx = 'samry'
+			labely = 'samrz'
+
 		if len(hist[0, 0, :]) == 1:
 			fig, ax = plt.subplots(ncols=len(hist[0, 0, :]), figsize=(6 * len(hist[0, 0, :]), 6))
 			ax.pcolor(hist[:, :, 0], norm=matplotlib.colors.LogNorm(), cmap='Greens')
@@ -207,16 +218,9 @@ class DFXM(object):
 			ax.set_xticklabels(beta, rotation=70)
 			ax.set_yticks(np.arange(hist[:, :, 0].shape[0])+0.5,  minor=False)
 			ax.set_yticklabels(alpha)
-			ax.set_xlabel('Theta')
-			if self.datatype == 'strain_tt':
-				ax.set_ylabel('2Theta')
-			if self.datatype == 'strain_eta':
-				ax.set_ylabel('Eta')
-			if self.datatype == 'topotomo':
-				ax.set_ylabel('Phi')
-			if self.datatype == 'mosaicity':
-				ax.set_xlabel('samry')
-				ax.set_ylabel('samrz')
+			ax.set_xlabel(labelx)
+			ax.set_ylabel(labely)
+
 		else:
 			fig, ax = plt.subplots(ncols=len(hist[0, 0, :]), figsize=(6 * len(hist[0, 0, :]), 6))
 			for i in range(len(hist[0, 0, :])):
@@ -225,13 +229,9 @@ class DFXM(object):
 				ax[i].set_xticklabels(beta, rotation=70)
 				ax[i].set_yticks(np.arange(hist[:, :, i].shape[0])+0.5,  minor=False)
 				ax[i].set_yticklabels(alpha)
-				ax[i].set_xlabel('Theta')
-				if self.datatype == 'strain_tt':
-					ax[i].set_ylabel('2Theta')
-				if self.datatype == 'strain_eta':
-					ax[i].set_ylabel('Eta')
-				if self.datatype == 'topotomo':
-					ax[i].set_ylabel('Phi')
+				ax[i].set_xlabel(labelx)
+				ax[i].set_ylabel(labely)
+
 		plt.axis('tight')
 		plt.tight_layout()
 		if self.rank == 0:
