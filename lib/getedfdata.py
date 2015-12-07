@@ -223,7 +223,7 @@ class GetEdfData(object):
 			time.sleep(0.5)
 			try:
 				self.meta = np.loadtxt(metadatafile)
-				if len(self.meta) == 35557:
+				if len(self.meta) == len(self.data_files):
 					break
 			except ValueError:
 				pass
@@ -264,10 +264,13 @@ class GetEdfData(object):
 	def getMetaData(self):
 		metadatafile = 'output/datameta_%s.txt' % self.dirhash
 
+		print "Starting meta data collection."
+
 		if os.path.isfile(metadatafile) == True:
 			self.readMetaFile(metadatafile)
 
 		else:
+			print "Making meta data file."
 			self.makeMetaArray()
 			np.savetxt(metadatafile,  self.meta)
 
