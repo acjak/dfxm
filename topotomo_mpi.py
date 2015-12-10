@@ -1,18 +1,20 @@
 #!/bin/python
+# -*- coding: utf-8 -*-
 """blah."""
 
 from lib.getedfdata import *
 from lib.gauss import *
 import numpy as np
 
-# import matplotlib
+import matplotlib
+matplotlib.rc('font', family='DejaVu Sans')
 import matplotlib.pylab as plt
 # import seaborn as sns
 
-import scipy.ndimage
+# import scipy.ndimage
 import itertools
 
-import warnings
+# import warnings
 
 from mpi4py import MPI
 import time
@@ -21,12 +23,16 @@ comm = MPI.COMM_WORLD
 rank = comm.Get_rank()
 mpisize = comm.Get_size()
 
+# rank = 0
+# mpisize = 1
+
 print rank, mpisize
 
 if rank == 0:
 	start = time.time()
 
-path = '/data/id06/inhouse/2015/run5/diamond/ff_topo_2'
+path = '/data/hxrm/Dislocation_november_2015/diamond/ff_topo_2'
+bg_path = '/data/hxrm/Dislocation_november_2015/diamond/bg_ff'
 
 filename = 'ff1_'
 filename2 = 'ff2_'
@@ -35,23 +41,26 @@ bg_filename = 'bg_ff_2x2_0p5s_'
 
 datatype = 'topotomo'
 
-poi = [500, 500]
-size = [1000, 1000]
+test_switch = True
+
+poi = [500, 350]
+size = [400, 400]
+s = 400
 
 roi = [poi[0]-size[0]/2, poi[0]+size[0]/2, poi[1]-size[1]/2, poi[1]+size[1]/2]
 
 
-data = GetEdfData(path, filename, bg_filename, roi, datatype)
+data = GetEdfData(path, filename, bg_path, bg_filename, roi, datatype, test_switch)
 data.setTest(True)
 data.adjustOffset(False)
 
-data2 = GetEdfData(path, filename2, bg_filename, roi, datatype)
+data2 = GetEdfData(path, filename2, bg_path, bg_filename, roi, datatype, test_switch)
 data2.setTest(True)
 data2.adjustOffset(False)
 
 
-a, b = data.getMetaValues()
-c, d = data2.getMetaValues()
+a, b, f = data.getMetaValues()
+c, d, g = data2.getMetaValues()
 ab_vals = list(itertools.product(a, b))
 cd_vals = list(itertools.product(c, d))
 
@@ -62,23 +71,31 @@ istart = rank*local_n
 istop = (rank+1)*local_n
 local_a = a[istart:istop]
 local_c = c[istart:istop]
-
+local_f = f[istart:istop]
+local_g = g[istart:istop]
 
 fig = plt.figure(frameon=False)
 fig.set_size_inches(5, 5)
-ax = plt.Axes(fig,[0., 0., 1., 1.])
+ax = plt.Axes(fig, [0., 0., 1., 1.])
 ax.set_axis_off()
 fig.add_axes(ax)
 
-for i in range(len(local_a)):
-	print local_a[i], local_c[i]
-	index = data.getIndex(float(local_a[i]), float(b[0]))
+# print b, f, d, g
+
+for i in [1]:  # range(len(local_a)):
+	fig.set_size_inches(6, 6)
+	ax = plt.Axes(fig, [0., 0., 1., 1.])
+	ax.set_axis_off()
+	fig.add_axes(ax)
+	index = data.getIndex(float(local_a[436]), float(b[0]), float(local_f[436]))
+	print local_a[436], f[436], index
 	img0 = data.getImage(index[0], False)
 
 	print np.mean(img0)
 
-	index = data2.getIndex(float(local_c[i]), float(d[0]))
-	img1 = data2.getImage(index[0], False)
+	index2 = data2.getIndex(float(local_c[436]), float(d[0]), float(local_g[436]))
+	print local_c[436], g[436], index2
+	img1 = data2.getImage(index2[0], False)
 
 	ta = np.ones((len(img1[:, 0]), len(img1[0, :]), 4),  dtype=np.uint8)*0
 
@@ -93,19 +110,24 @@ for i in range(len(local_a)):
 		ta[:, :, 2] = 0
 		ta[:, :, 1] = 0
 
+	ax.imshow(ta, interpolation="none", cmap="Greens")
+	ax.autoscale(enable=False)
+	# ax.text(50, 50, str(local_c[436]), color='white')
+	ax.plot([s-20-2*56, s-20], [s-40, s-40], linewidth=5, color='white')
 
-	ax.imshow(ta,interpolation="none", cmap = "Greens")
-	#plt.colorbar()
-	fig.savefig(data.directory + '/topo_im_' + str('%04d' % (i+rank*local_n)) + '.png')
-	#fig.clf()
+	ax.text(s-100, s-20, u'20 μm', color='white')
+
+	# ax.clf()
+	# plt.colorbar()
+	fig.savefig(data.directory + '/topo_im_' + str('%04d' % (436+rank*local_n)) + '.png')
+	fig.clf()
 
 if rank == 0:
 
-	#hist, datx, daty = data.makeMeanGrid()
-	#hist_array = np.zeros((len(hist[:, 0]), len(hist[0, :]), 1))
-	#hist_array[:, :, 0] = hist
+	# hist, datx, daty = data.makeMeanGrid()
+	# hist_array = np.zeros((len(hist[:, 0]), len(hist[0, :]), 1))
+	# hist_array[:, :, 0] = hist
 	# data.makeHistogram(hist_array, a, b, 'ff_topo')
-
 
 	end = time.time()
 	print "Time:", end-start
