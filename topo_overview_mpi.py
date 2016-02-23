@@ -11,6 +11,7 @@ import matplotlib
 matplotlib.rc('font', family='DejaVu Sans')
 matplotlib.use('Agg')
 import matplotlib.pylab as plt
+from matplotlib.colors import colorConverter
 # import seaborn as sns
 
 # import scipy.ndimage
@@ -98,22 +99,75 @@ def plotImage(imgarray1, imgarray2):
 	# gs1.update(wspace=0.025,  hspace=0.3)
 
 	# for i in range(len(imgarray1[:, 0, 0])):
-	ta = np.ones((len(imgarray1[0, :, 0]), len(imgarray1[0, 0, :]), 4),  dtype=np.uint8)*0
-	ta[:, :, 3] = 255
+	ta = np.ones((len(imgarray1[0, :, 0]), len(imgarray1[0, 0, :]), 3),  dtype=np.uint8)*0
+	# ta[:, :, 3] = 255
 	ta[:, :, 0] = 255*imgarray1[0, :, :]/np.max(imgarray1[0, :, :])
 	ta[:, :, 2] = 255*imgarray1[0, :, :]/np.max(imgarray1[0, :, :])
 	ta[:, :, 1] = 255*imgarray2[0, :, :]/np.max(imgarray2[0, :, :])
+
+
+	img1 = 255*imgarray1[0, :, :]/np.max(imgarray1[0, :, :])
+	img2 = 255*imgarray2[0, :, :]/np.max(imgarray2[0, :, :])
 
 	s = 400
 
 	# print 255*imgarray1[i, :, :]/np.max(imgarray1[i, :, :])
 	# axarr = fig.subplot()
-	axarr.imshow(ta)
+
+	# image1 = imgarray1[0]
+	# image2 = imgarray2[0]
+	#
+	# img1 *= 1.4
+	# img2 *= 1.4
+	#
+	# upper_treshold = 255
+	#
+	# img1[img1 > upper_treshold] = 255
+	# img2[img2 > upper_treshold] = 255
+	#
+	# # img1[img1 < 100] /= 3.
+	# # img2[img2 < 100] /= 3.
+	#
+	# lower_treshold = 20
+	#
+	# img1[img1 < lower_treshold] = 0
+	# img2[img2 < lower_treshold] = 0
+	#
+	# print np.max(image1)
+	# print np.max(image2)
+
+	# generate the colors for your colormap
+	color1 = colorConverter.to_rgba('black')
+	color2 = colorConverter.to_rgba('white')
+	print color1, color2
+
+	# make the colormaps
+	cmap1 = matplotlib.colors.LinearSegmentedColormap.from_list('my_cmap', ['white', (0.230, 0.299, 0.754)], 256)
+	cmap2 = matplotlib.colors.LinearSegmentedColormap.from_list('my_cmap2', ['white', (0.706, 0.016, 0.150)], 256)
+
+	cmap2._init()  # create the _lut array, with rgba values
+	cmap1._init()
+
+	# create your alpha array and fill the colormap with them.
+	# here it is progressive, but you can create whathever you want
+	alphas = np.linspace(0., 1.0, cmap2.N+3)
+	cmap2._lut[:, -1] = alphas
+	# cmap1._lut[:, -1] = logalphas/max(logalphas)
+
+	# axarr.imshow(ta)
+
+	axarr.imshow(imgarray1[0, :, :], interpolation='none', cmap=cmap1, origin='lower')
+	axarr.imshow(imgarray2[0, :, :], interpolation='none', cmap=cmap2, origin='lower')
+	# axarr.pcolor(imgarray1[0], cmap=cmap1)
+	# axarr.pcolor(imgarray2[0], cmap=cmap2)
+
+	# axarr.imshow(imgarray1[0], interpolation=None)
 	axarr.autoscale(enable=False)
 	# axarr.text(50, 50, str(local_c[436]), color='white')
-	axarr.plot([s-20-2*56, s-20], [s-35, s-35], linewidth=5, color='white')
-
-	axarr.text(s-105, s-15, u'20 μm', color='white', fontsize=18)
+	# axarr.plot([s-20-2*56, s-20], [s-35, s-35], linewidth=5, color='white')
+	axarr.plot([s-15, s-15-56], [35, 35], linewidth=5, color='black')
+	axarr.text(s-72, 15, u'10 μm', color='black', fontsize=16)
+	# axarr.text(s-105, s-15, u'20 μm', color='white', fontsize=18)
 	# axarr.set_title('%.4f' % (float(c[i])))
 	axarr.xaxis.set_major_formatter(plt.NullFormatter())
 	axarr.yaxis.set_major_formatter(plt.NullFormatter())
@@ -126,7 +180,7 @@ def makeImgList(a, b, c, diffrz_pos):
 
 	for i in [1]:  # range(len(c)):
 		# print rank, float(a[i]-data.alpha0), float(b[i]-data.beta0)#, i
-		print data.alpha0-float(a[diffrz_pos]), data.beta0-float(b[diffrz_pos]), data.gamma0-c[6]
+		# print data.alpha0-float(a[diffrz_pos]), data.beta0-float(b[diffrz_pos]), data.gamma0-c[6]
 		index = data.getIndex(float(a[diffrz_pos]), float(b[diffrz_pos]), c[6])
 		index_list.append(index[0])
 

@@ -68,7 +68,7 @@ class DFXM(object):
 		in any information that is necessary.
 	"""
 
-	def __init__(self, directory, roi, datatype, test_switch):
+	def __init__(self, path, data_files, directory, roi, datatype, dirhash, meta, test_switch):
 		super(DFXM, self).__init__()
 
 		self.comm = MPI.COMM_WORLD
@@ -80,6 +80,12 @@ class DFXM(object):
 		self.ts = test_switch
 
 		self.directory = directory
+
+		self.meta = meta
+		self.dirhash = dirhash
+
+		self.path = path
+		self.data_files = data_files
 		# if test_switch:
 		# 	self.makeOutputFolder()
 
@@ -127,9 +133,9 @@ class DFXM(object):
 		if os.path.isfile(meandatafile) == True:
 			self.data_mean = np.loadtxt(meandatafile)
 		else:
-			self.data_mean = np.zeros((len(self.data_files)))
+			self.data_mean = np.zeros((len(self.meta[:, 0])))
 			if self.rank == 0:
-				print "Reading %g data files..." % len(self.data_files)
+				print "Reading %g data files..." % len(self.meta[:, 0])
 			for i in range(len(self.data_files)):
 				file_with_path = self.path + '/' + self.data_files[i]
 				img = EdfFile.EdfFile(file_with_path)
@@ -165,7 +171,7 @@ class DFXM(object):
 		img[:, :, 0] = 255*data2/np.max(data2)
 		return img
 
-	def makeMeanGrid(self):
+	def makeMeanGrid(self, mean):
 		tt_vals = sorted(list(set(self.meta[:, 0])))
 		theta_vals = sorted(list(set(self.meta[:, 1])))
 		tt_step_size = (max(tt_vals)-min(tt_vals))/len(tt_vals)
@@ -183,7 +189,7 @@ class DFXM(object):
 		t2t_grid_x,  t2t_grid_y = np.ogrid[min(theta_vals):theta_vals_max:theta_step_size, min(tt_vals):tt_vals_max:tt_step_size]
 
 		hist = np.zeros((len(tt_vals), len(theta_vals)))
-		mean = self.getMean()
+		# mean = self.getMean()
 		for i in range(len(self.meta[:, 0])):
 			# img = self.getImage(i, False)
 			# pixval = img[500, 500]
@@ -459,12 +465,12 @@ class DFXM(object):
 
 		return fig, ax
 
-	def getProjection(self, data, x0, y0, x1, y1):
-		num = 500
+	def getProjection(self, data, x0, y0, x1, y1, num):
+		# num = 500
 		x,  y = np.linspace(x0,  x1,  num),  np.linspace(y0,  y1,  num)
 		zi = scipy.ndimage.map_coordinates(np.transpose(data),  np.vstack((x, y)))
 		length = math.sqrt((x1-x0)**2+(y1-y0)**2)
-		return zi, length
+		return zi
 
 	def strainRange(self, data_part, xr, beta0):
 		strainpic = np.zeros((np.shape(data_part[0, :, :])), dtype='float64')

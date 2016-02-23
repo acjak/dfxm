@@ -33,6 +33,7 @@ import scipy
 import scipy.ndimage
 import EdfFile
 import hashlib
+import warnings
 
 from os import listdir
 from os.path import isfile,  join
@@ -213,10 +214,19 @@ class GetEdfData(object):
 		mot_array = header['motor_mne'].split(' ')
 		motpos_array = header['motor_pos'].split(' ')
 
-		det_array = header['counter_mne'].split(' ')
-		detpos_array = header['counter_pos'].split(' ')
+		try:
+			det_array = header['counter_mne'].split(' ')
+			detpos_array = header['counter_pos'].split(' ')
+		except KeyError:
+			det_array = []
+			detpos_array = []
 
-		return mot_array, motpos_array, det_array, detpos_array
+		try:
+			# srcur = header['machine current'].split(' ')[-2]
+			srcur = 0
+			return mot_array, motpos_array, det_array, detpos_array, srcur
+		except KeyError:
+			return mot_array, motpos_array, det_array, detpos_array
 
 	def readMetaFile(self, metadatafile):
 		while True:
@@ -235,13 +245,16 @@ class GetEdfData(object):
 			print "Reading meta data..."
 
 		for i in range(len(self.data_files)):
-			mot_array, motpos_array, det_array, detpos_array = self.getHeader(i)
+			try:
+				mot_array, motpos_array, det_array, detpos_array, srcur = self.getHeader(i)
+			except ValueError:
+				mot_array, motpos_array, det_array, detpos_array = self.getHeader(i)
+				self.meta[i, 3] = round(float(detpos_array[det_array.index('srcur')]),  5)
 
 			if self.datatype == 'topotomo':
 				self.meta[i, 0] = round(float(motpos_array[mot_array.index('diffrx')]),  8)
 				self.meta[i, 1] = round(float(motpos_array[mot_array.index('diffrz')]),  8)
 				self.meta[i, 2] = float(self.data_files[i][-8:-4])
-				self.meta[i, 3] = round(float(detpos_array[det_array.index('srcur')]),  5)
 
 			if self.datatype == 'strain_eta':
 				theta = (11.006-10.986)/40
@@ -253,13 +266,11 @@ class GetEdfData(object):
 				self.meta[i, 0] = round(float(motpos_array[mot_array.index('obyaw')]),  8)
 				self.meta[i, 1] = round(float(motpos_array[mot_array.index('diffrz')]),  8)
 				self.meta[i, 2] = round(float(motpos_array[mot_array.index('diffrx')]),  8)
-				self.meta[i, 3] = round(float(detpos_array[det_array.index('srcur')]),  5)
 
 			if self.datatype == 'mosaicity':
 				self.meta[i, 0] = round(float(motpos_array[mot_array.index('samry')]),  8)
 				self.meta[i, 1] = round(float(motpos_array[mot_array.index('samrz')]),  8)
 				self.meta[i, 2] = round(float(motpos_array[mot_array.index('diffrx')]),  8)
-				self.meta[i, 3] = round(float(detpos_array[det_array.index('srcur')]),  5)
 
 	def getMetaData(self):
 		metadatafile = 'output/datameta_%s.txt' % self.dirhash
@@ -325,7 +336,11 @@ class GetEdfData(object):
 			index = np.where(self.meta[:, 0] == alpha)
 		if alpha == -10000 and beta != -10000:
 			index = np.where(self.meta[:, 1] == beta)
-		if alpha != -10000 and beta != -10000:
+		if alpha != -10000 and beta != -10000 and gamma == -10000:
+			i1 = np.where(self.meta[:, 0] == alpha)
+			i2 = np.where(self.meta[:, 1] == beta)
+			index = list(set(i1[0]).intersection(i2[0]))
+		if alpha != -10000 and beta != -10000 and gamma != -10000:
 			i1 = np.where(self.meta[:, 0] == alpha)
 			i2 = np.where(self.meta[:, 1] == beta)
 			index_ab = list(set(i1[0]).intersection(i2[0]))
@@ -350,11 +365,12 @@ class GetEdfData(object):
 				roi = self.roi
 
 			if full is True:
-				print np.shape(self.bg_combined_full)
-				im = img.GetData(0).astype(np.int64)  # -self.bg_combined_full
+				# print np.shape(self.bg_combined_full)
+				im = img.GetData(0).astype(np.int64)-self.bg_combined_full
 			else:
 				im = img.GetData(0).astype(np.int64)[roi[2]:roi[3], roi[0]:roi[1]]-self.bg_combined
 				# im = img.GetData(0).astype(np.int64)[roi[2]:roi[3], roi[0]:roi[1]]
+				# print np.shape(im)
 			# np.save(tmpfile,im)
 			# print "SRCUR:" + str(self.meta[index, 3])
 			im = self.cleanImage(im)  # /self.meta[index, 3]
@@ -396,7 +412,9 @@ class GetEdfData(object):
 			idx0 = [np.floor((len(imgb[:, 0])-len(img[:, 0]))/2), np.floor((len(imgb[0, :])-len(img[0, :]))/2)]
 			idx1 = [np.floor((len(imgb[:, 0])+len(img[:, 0]))/2), np.floor((len(imgb[0, :])+len(img[0, :]))/2)]
 
-			imgb = imgb[idx0[0]:idx1[0], idx0[1]:idx1[1]]
+			with warnings.catch_warnings():
+				warnings.simplefilter("ignore")
+				imgb = imgb[idx0[0]:idx1[0], idx0[1]:idx1[1]]
 
 			stack[:, :, n] = imgb
 		return np.amin(stack, 2)

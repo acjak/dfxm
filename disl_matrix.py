@@ -29,8 +29,8 @@ def makeGvector(xylin, ang):
                 gv[1, i, j] = -prefix*bv/(2*math.pi)*(xylin[i])/((xylin[i])**2 + (xylin[j])**2)
                 gv[2, i, j] = prefix
 
-
     return gv
+
 
 def makeQvectorPrecise(omega, xi):
     sinc = np.sin(omega-xi/2.)
@@ -41,6 +41,7 @@ def makeQvectorPrecise(omega, xi):
     q = np.array([np.swapaxes(2*sinx*sinc, 0, 1), np.zeros((np.shape(np.swapaxes(2*sinx*cosc, 0, 1)))), np.swapaxes(2*sinx*cosc, 0, 1)])
 
     return q
+
 
 def makeQvector(omega, xi, dXi, dZeta):
     sinc = np.sin(omega-xi/2.)
@@ -87,9 +88,9 @@ def fullMatrixSPIPrecise(wl, gv, omega, xi, local_n):
             done = 100*float(m)/local_n
             print "Calculation is %g perc. complete..." % done
         for n in range(xi_len):
-            q = [0, \
-                (2*math.pi/wl)*2*np.sin(xi[n]/2)*np.sin(omega[m]-xi[n]/2), \
-                (2*math.pi/wl)*2*np.sin(xi[n]/2)*np.cos(omega[m]-xi[n]/2)]
+            q = [0,
+                 (2*math.pi/wl)*2*np.sin(xi[n]/2)*np.sin(omega[m]-xi[n]/2),
+                 (2*math.pi/wl)*2*np.sin(xi[n]/2)*np.cos(omega[m]-xi[n]/2)]
 
             for i in range(len(xylin)):
                 for j in range(len(xylin)):
@@ -99,8 +100,8 @@ def fullMatrixSPIPrecise(wl, gv, omega, xi, local_n):
                     dist[2] = abs(gv[2, i, j] - q[2])
 
                     # for k in range(len(q)):
-                        # dist[k] = abs(gv[k, i, j] - q[k])
-                        # print gaus(1., 1., dist[k], -1.)
+                    #    dist[k] = abs(gv[k, i, j] - q[k])
+                    #    print gaus(1., 1., dist[k], -1.)
 
                     if rank == 0 and i == 0 and j == 0:
                         # print dist[0]

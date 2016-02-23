@@ -43,7 +43,8 @@ datatype = 'topotomo'
 
 test_switch = True
 
-poi = [500, 350]
+# poi = [500, 500]
+poi = [500, 650]
 size = [400, 400]
 s = 400
 
@@ -64,7 +65,8 @@ c, d, g = data2.getMetaValues()
 ab_vals = list(itertools.product(a, b))
 cd_vals = list(itertools.product(c, d))
 
-# print a
+print len(a), len(b), len(f)
+print len(c), len(d), len(g)
 
 local_n = len(a)/mpisize
 istart = rank*local_n
@@ -75,26 +77,25 @@ local_f = f[istart:istop]
 local_g = g[istart:istop]
 
 fig = plt.figure(frameon=False)
-fig.set_size_inches(5, 5)
-ax = plt.Axes(fig, [0., 0., 1., 1.])
-ax.set_axis_off()
-fig.add_axes(ax)
+# fig.set_size_inches(5, 5)
+# ax = plt.Axes(fig, [0., 0., 1., 1.])
+# ax.set_axis_off()
+# fig.add_axes(ax)
 
 # print b, f, d, g
 
-for i in [1]:  # range(len(local_a)):
+for j in [1]:  # range(len(local_a)):
+	i = 436
 	fig.set_size_inches(6, 6)
 	ax = plt.Axes(fig, [0., 0., 1., 1.])
 	ax.set_axis_off()
 	fig.add_axes(ax)
-	index = data.getIndex(float(local_a[436]), float(b[0]), float(local_f[436]))
-	print local_a[436], f[436], index
+	index = data.getIndex(float(local_a[i]), float(b[0]), float(local_f[i]))
+	print local_a[i], f[i], index
 	img0 = data.getImage(index[0], False)
 
-	print np.mean(img0)
-
-	index2 = data2.getIndex(float(local_c[436]), float(d[0]), float(local_g[436]))
-	print local_c[436], g[436], index2
+	index2 = data2.getIndex(float(local_c[i]), float(d[0]), float(local_g[i]))
+	print local_c[i], g[i], index2
 	img1 = data2.getImage(index2[0], False)
 
 	ta = np.ones((len(img1[:, 0]), len(img1[0, :]), 4),  dtype=np.uint8)*0
@@ -112,14 +113,13 @@ for i in [1]:  # range(len(local_a)):
 
 	ax.imshow(ta, interpolation="none", cmap="Greens")
 	ax.autoscale(enable=False)
-	# ax.text(50, 50, str(local_c[436]), color='white')
+	# ax.text(50, 50, str(local_c[i]), color='white')
 	ax.plot([s-20-2*56, s-20], [s-40, s-40], linewidth=5, color='white')
-
 	ax.text(s-100, s-20, u'20 μm', color='white')
 
 	# ax.clf()
 	# plt.colorbar()
-	fig.savefig(data.directory + '/topo_im_' + str('%04d' % (436+rank*local_n)) + '.png')
+	fig.savefig(data.directory + '/topo_im_' + str('%04d' % (i+rank*local_n)) + '.png')
 	fig.clf()
 
 if rank == 0:
