@@ -187,6 +187,7 @@ class GetEdfData(object):
 
 		self.bg_combined_full /= len(self.bg_files)
 
+
 	def getMeanData(self):
 		meandatafile = 'output/datamean_%s.txt' % self.dirhash
 
@@ -228,6 +229,55 @@ class GetEdfData(object):
 		except KeyError:
 			return mot_array, motpos_array, det_array, detpos_array
 
+	def getFullHeader(self, filenumber):
+		file_with_path = self.path + '/' + self.data_files[filenumber]
+		img = EdfFile.EdfFile(file_with_path)
+		header = img.GetHeader(0)
+
+		metalist = []
+		# indexlist = []
+		#
+		# a = 0
+
+		for ind in header.keys():
+			if ind != 'motor_pos' and ind != 'motor_mne' and ind != 'counter_pos' and ind != 'counter_mne':
+				metalist.append(header[ind])
+
+		metalist.extend(header['motor_pos'].split(' '))
+		metalist.extend(header['counter_pos'].split(' '))
+
+
+			# if filenumber == 0:
+			# 	if ind != 'motor_pos' and ind != 'motor_mne' and ind != 'counter_pos' and ind != 'counter_mne':
+			# 		indexlist.append(ind)
+			# 	# if ind == 'motor_mne':
+			# 	# if ind == 'counter_mne':
+			# 	indexlist.extend(header['motor_mne'].split(' '))
+			# 	indexlist.extend(header['counter_mne'].split(' '))
+			#
+			# 	self.indexlist = indexlist
+
+		# print indexlist
+
+		return metalist
+
+	def getIndexList(self):
+		file_with_path = self.path + '/' + self.data_files[0]
+		img = EdfFile.EdfFile(file_with_path)
+		header = img.GetHeader(0)
+
+		indexlist = []
+
+		for ind in header.keys():
+			if ind != 'motor_pos' and ind != 'motor_mne' and ind != 'counter_pos' and ind != 'counter_mne':
+				indexlist.append(ind)
+			# if ind == 'motor_mne':
+			# if ind == 'counter_mne':
+		indexlist.extend(header['motor_mne'].split(' '))
+		indexlist.extend(header['counter_mne'].split(' '))
+
+		self.indexlist = indexlist
+
 	def readMetaFile(self, metadatafile):
 		while True:
 			time.sleep(0.5)
@@ -237,6 +287,34 @@ class GetEdfData(object):
 					break
 			except ValueError:
 				pass
+
+	def readFullMetaFile(self, fullmetadatafile, metadatafile, indexfile):
+		self.indexlist = np.load(indexfile).tolist()
+		while True:
+			time.sleep(0.5)
+			try:
+				self.fma = np.load(fullmetadatafile)
+				self.meta = np.load(metadatafile)
+				if len(self.fma) == len(self.data_files):
+					break
+			except ValueError:
+				pass
+
+	def makeFullMetaArray(self):
+		self.meta = np.zeros((len(self.data_files),  4))
+
+		if self.rank == 0:
+			print "Reading meta data..."
+
+		self.fma = []
+
+		self.getIndexList()
+
+		for i in range(len(self.data_files)):
+			self.fma.append(self.getFullHeader(i))
+
+
+		# print (np.bitwise_or.reduce(self.fma) == self.fma[0])
 
 	def makeMetaArray(self):
 		self.meta = np.zeros((len(self.data_files),  4))
@@ -272,18 +350,73 @@ class GetEdfData(object):
 				self.meta[i, 1] = round(float(motpos_array[mot_array.index('samrz')]),  8)
 				self.meta[i, 2] = round(float(motpos_array[mot_array.index('diffrx')]),  8)
 
+	def makeMetaArrayNew(self):
+		self.meta = np.zeros((len(self.data_files),  4))
+
+		if self.rank == 0:
+			print "Making meta array."
+
+		for i in range(len(self.fma)):
+			try:
+				mot_array, motpos_array, det_array, detpos_array, srcur = self.getHeader(i)
+			except ValueError:
+				mot_array, motpos_array, det_array, detpos_array = self.getHeader(i)
+				self.meta[i, 3] = round(float(self.fma[i][self.indexlist.index('srcur')]),  5)
+
+			if self.datatype == 'topotomo':
+				self.meta[i, 0] = round(float(self.fma[i][self.indexlist.index('diffrx')]),  8)
+				self.meta[i, 1] = round(float(self.fma[i][self.indexlist.index('diffrz')]),  8)
+				self.meta[i, 2] = float(self.data_files[i][-8:-4])
+
+			if self.datatype == 'strain_eta':
+				theta = (11.006-10.986)/40
+				self.meta[i, 0] = round(float(self.fma[i][self.indexlist.index('obpitch')]),  8)
+				self.meta[i, 1] = round(10.986+theta*(float(self.data_files[i][-8:-4]))+theta/2, 8)
+				self.meta[i, 2] = float(self.data_files[i][-8:-4])
+
+			if self.datatype == 'strain_tt':
+				self.meta[i, 0] = round(float(self.fma[i][self.indexlist.index('obyaw')]),  8)
+				self.meta[i, 1] = round(float(self.fma[i][self.indexlist.index('diffrz')]),  8)
+				self.meta[i, 2] = round(float(self.fma[i][self.indexlist.index('diffrx')]),  8)
+
+			if self.datatype == 'mosaicity':
+				self.meta[i, 0] = round(float(self.fma[i][self.indexlist.index('samry')]),  8)
+				self.meta[i, 1] = round(float(self.fma[i][self.indexlist.index('samrz')]),  8)
+				self.meta[i, 2] = round(float(self.fma[i][self.indexlist.index('diffrx')]),  8)
+
+			if self.datatype == 'res_paper':
+				self.meta[i, 0] = round(float(self.fma[i][self.indexlist.index('samrz')]),  8)
+				self.meta[i, 1] = round(float(self.fma[i][self.indexlist.index('detx')]),  8)
+				self.meta[i, 2] = round(float(self.fma[i][self.indexlist.index('diffrz')]),  8)
+				self.meta[i, 3] = round(float(self.fma[i][self.indexlist.index('srcur')]),  8)
+
+			if self.datatype == 'ffdet_normalization':
+				self.meta[i, 0] = round(float(self.fma[i][self.indexlist.index('detx')]),  8)
+				self.meta[i, 1] = round(float(self.fma[i][self.indexlist.index('detz')]),  8)
+				self.meta[i, 2] = round(float(self.fma[i][self.indexlist.index('diffrz')]),  8)
+				self.meta[i, 3] = round(float(self.fma[i][self.indexlist.index('srcur')]),  8)
+
+
 	def getMetaData(self):
-		metadatafile = 'output/datameta_%s.txt' % self.dirhash
+		fullmetadatafile = 'tmp/datafullmeta_%s.npy' % self.dirhash
+		metadatafile = 'tmp/datameta_%s.txt' % self.dirhash
+		indexfile = 'tmp/dataindex_%s.npy' % self.dirhash
 
 		print "Starting meta data collection."
 
 		if os.path.isfile(metadatafile) == True:
+			print "Reading meta data from file."
+			# self.readFullMetaFile(fullmetadatafile, metadatafile, indexfile)
 			self.readMetaFile(metadatafile)
 
 		else:
 			print "Making meta data file."
-			self.makeMetaArray()
-			np.savetxt(metadatafile,  self.meta)
+			self.makeFullMetaArray()
+			self.makeMetaArrayNew()
+			np.savetxt(metadatafile, self.meta)
+			np.save(indexfile, self.indexlist)
+			np.save(fullmetadatafile,  self.fma)
+
 
 		alphavals = sorted(list(set(self.meta[:, 0])))
 		betavals = sorted(list(set(self.meta[:, 1])))
@@ -373,6 +506,7 @@ class GetEdfData(object):
 				# print np.shape(im)
 			# np.save(tmpfile,im)
 			# print "SRCUR:" + str(self.meta[index, 3])
+
 			im = self.cleanImage(im)  # /self.meta[index, 3]
 
 		# else:
