@@ -1,6 +1,12 @@
 import scipy
 import numpy as np
 
+import matplotlib
+matplotlib.use('Agg')
+print "test1"
+import matplotlib.pylab as plt
+print "test2"
+
 def gaus(x,a,x0,sigma):
 	return a*np.exp(-(x-x0)**2/(2*sigma**2))
 
@@ -14,6 +20,23 @@ def fitGaussian(x,y):
 		return popt,pcov
 	except RuntimeError:
 		print "Error - curve_fit failed"
+
+xr = np.arange(-5., 5., 0.1)
+# print xr
+y = []
+
+# for i in xr:
+# 	y.append(gaus(i, 3., 0., 0.03 ))
+y = gaus(xr, 3., 0.2, 0.03)
+
+popt, pcov = fitGaussian(xr, y)
+
+print popt
+
+plt.plot(xr, y)
+plt.savefig('gauss_test.png')
+
+# popt, pcov = self.fitGaussian(xr, data_part[:, i, j])
 
 def makeStrainMPI(alldata,roi,bins,length,xr):
 	from mpi4py import MPI
@@ -38,11 +61,11 @@ def makeStrainMPI(alldata,roi,bins,length,xr):
 
 	ypix = (roi[1]-roi[0])/bins
 	xpix = (roi[3]-roi[2])/bins
-	
+
 	strainpic = np.zeros((xpix,ypix))
 
 	theta = np.arange(-0.0025*(length/2),0.0025*(length/2)+.001,.0001)
-	
+
 	pop = []
 
 	local_n = ypix/size
@@ -60,7 +83,7 @@ def makeStrainMPI(alldata,roi,bins,length,xr):
 	# output[0,:,:] = strainpic_part
 	# print output[0,0,0]
 
-	
+
 
 	if rank == 0:
 		datarank = strainpic_part[0,0]
