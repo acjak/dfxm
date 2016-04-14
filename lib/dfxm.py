@@ -158,10 +158,11 @@ class DFXM(object):
 		from scipy.optimize import curve_fit
 
 		try:
-			popt, pcov = curve_fit(self.gaus, x, y, p0=[max(y), x[np.argmax(y)], -3.E-3], maxfev=100000)
+			popt, pcov = curve_fit(self.gaus, x, y, p0=[max(y), x[np.argmax(y)], -3.E-3], maxfev=1000)
 			return popt, pcov
 		except RuntimeError:
-			print "Error - curve_fit failed"
+			pass
+		# 	print "Error - curve_fit failed"
 
 	def makeMultiColor(self, data, data2):
 		img = np.zeros((len(data[:, 0]), len(data[0, :]), 4),  dtype=np.uint8)
@@ -600,26 +601,112 @@ class DFXM(object):
 		if self.comm.rank == 0:
 			return gaussarray
 
-	def plotPPOS(self, gaussarray, length):
+	def makeNewGaussArrayMPI(self, alldata, bins, xr):
+		print self.rank, self.size
+		if self.rank == 0:
+			start = time.time()
+
+		def gaussRange(data_part, xr):
+			xr_fine = np.arange(min(xr), max(xr), abs(xr[1]-xr[0])*0.05)
+			gaussarray = np.zeros((len(data_part[0, :, 0]), len(data_part[0, 0, :]), 3))
+			errors = 0
+			for i in range(len(data_part[0, :, 0])):
+
+				rd = round(float(i)/len(data_part[0, :, 0]), 3)
+
+				if self.rank == 0:
+					if rd == 0.0 or \
+						rd == 0.1 or \
+						rd == 0.2 or \
+						rd == 0.3 or \
+						rd == 0.4 or \
+						rd == 0.5 or \
+						rd == 0.6 or \
+						rd == 0.7 or \
+						rd == 0.8 or \
+						rd == 0.9:
+						done = 100*(float(i)/len(data_part[0, :, 0]))
+						print "Calculation is %g perc. complete..." % done
+				for j in range(len(data_part[0, 0, :])):
+					try:
+						popt, pcov = self.fitGaussian(xr, data_part[:, i, j])
+						# ygauss = self.gaus(xr_fine, popt[0], popt[1], popt[2])
+						# intpixel = sum([abs(x)*y for x, y in zip(xr_fine, ygauss)])
+						gaussarray[i, j, 0] = popt[0]
+						gaussarray[i, j, 1] = popt[1]
+						gaussarray[i, j, 2] = popt[2]
+					except TypeError:
+						errors += 1
+						# print i, j, "Gaussian could not be fitted."
+
+			print "Errors: "  + str(errors)
+			gaussarray[0, 0] = self.rank
+			return gaussarray
+
+		ypix = (self.roi[1]-self.roi[0])/bins
+		# xpix = (self.roi[3]-self.roi[2])/bins
+
+		# Chose part of data set for a specific CPU (rank).
+		local_n = ypix/self.size
+		istart = self.rank*local_n
+		istop = (self.rank+1)*local_n
+		local_data = alldata[:, :, istart:istop]
+
+		if self.rank == 0:
+			end = time.time()
+			print "Init time: ", end-start
+		# Calculate gaussian on part of data set.
+		gaussarray_part = gaussRange(local_data, xr)
+
+		if self.rank == 0:
+			# Make empty arrays to fill in data from other cores.
+			reclenx = len(alldata[:, 0, 0])
+			recleny = len(alldata[0, :, 0])
+			reclenz = len(alldata[0, 0, istart:istop])
+			reclenr = 3
+			recv_buffer = np.zeros((reclenx, recleny, reclenz, reclenr))
+			gaussarray = np.zeros((len(alldata[0, :, 0]), len(alldata[0, 0, :]), 3))
+
+			datarank = gaussarray_part[0, 0]
+			gaussarray_part[0, 0] = 0
+			gaussarray[:, istart:istop, :] = gaussarray_part
+			for i in range(1,  self.size):
+				self.comm.Recv(recv_buffer,  MPI.ANY_SOURCE)
+				datarank = recv_buffer[0][0, 0, 0]
+				recv_buffer[0][0, 0, 0] = recv_buffer[0][0, 1, 0]
+				recv_buffer[0][0, 0, 1] = recv_buffer[0][0, 1, 1]
+				recv_buffer[0][0, 0, 2] = recv_buffer[0][0, 1, 2]
+				gaussarray[:, datarank*local_n:(datarank+1)*local_n, :] = recv_buffer[0]
+
+		else:
+			# all other process send their result
+			self.comm.Send(gaussarray_part, dest=0)
+
+		# root process prints results
+		if self.comm.rank == 0:
+			return gaussarray
+
+	def plotPPOS(self, gaussarray):
 		# sns.set_context("talk")
 
 		figstrain, axppos = plt.subplots(3, 1)
-
-		intpic = np.zeros((np.shape(gaussarray[:, :, 0])))
-		ppospic = np.zeros((np.shape(gaussarray[:, :, 0])))
+		plt.tight_layout()
+		amplpic = np.zeros((np.shape(gaussarray[:, :, 0])))
+		midppic = np.zeros((np.shape(gaussarray[:, :, 0])))
 		fwhmpic = np.zeros((np.shape(gaussarray[:, :, 0])))
 
-		ppospic[:, :] = gaussarray[:, :, 1]
+		amplpic[:, :] = gaussarray[:, :, 0]
+		midppic[:, :] = gaussarray[:, :, 1]
 		fwhmpic[:, :] = 2*math.sqrt(2*math.log(2))*gaussarray[:, :, 2]
-		intpic[:, :] = gaussarray[:, :, 0]
 
-		im0 = axppos[0].imshow(intpic, cmap='jet', interpolation='None')
-		im1 = axppos[1].imshow(fwhmpic, cmap='jet', interpolation='None')
-		im2 = axppos[2].imshow(ppospic, cmap='BrBG', interpolation='None')
 
-		axppos[0].set_title('INT')
-		axppos[1].set_title('FWHM')
-		axppos[2].set_title('PPOS')
+		im0 = axppos[0].imshow(amplpic[3:-3, 3:-3], cmap='jet', interpolation='None')
+		im1 = axppos[1].imshow(fwhmpic[3:-3, 3:-3], cmap='jet', interpolation='None')
+		im2 = axppos[2].imshow(midppic[3:-3, 3:-3] , cmap='BrBG', interpolation='None')
+
+		axppos[0].set_title('AMPL')
+		axppos[1].set_title('MIDP')
+		axppos[2].set_title('FWHM')
 
 		def fmt(x,  pos):
 			a,  b = '{:.2e}'.format(x).split('e')
@@ -627,14 +714,20 @@ class DFXM(object):
 			return r'${} \times 10^{{{}}}$'.format(a,  b)
 
 		figstrain.subplots_adjust(right=0.8)
-		cbar_ax0 = figstrain.add_axes([0.85,  0.65,  0.02,  0.2])
+		cbar_ax0 = figstrain.add_axes([0.85,  0.7,  0.02,  0.2])
 		cbar_ax1 = figstrain.add_axes([0.85,  0.4,  0.02,  0.2])
-		cbar_ax2 = figstrain.add_axes([0.85,  0.1,  0.02,  0.2])
-		figstrain.colorbar(im0, cax=cbar_ax0)  # , format=ticker.FuncFormatter(fmt))
+		cbar_ax2 = figstrain.add_axes([0.85,  0.05,  0.02,  0.2])
+		clb0 = figstrain.colorbar(im0, cax=cbar_ax0)  # , format=ticker.FuncFormatter(fmt))
 		clb1 = figstrain.colorbar(im1, cax=cbar_ax1)  # , format=ticker.FuncFormatter(fmt))
 		clb2 = figstrain.colorbar(im2, cax=cbar_ax2)  # , format=ticker.FuncFormatter(fmt))
-		clb1.set_clim(-0.0135, -0.0045)
-		clb2.set_clim(-0.0035, 0.0035)
+
+		print np.min(amplpic), np.max(amplpic)
+		print np.min(midppic), np.max(midppic)
+		print np.min(fwhmpic), np.max(fwhmpic)
+
+		clb0.set_clim(0., 200.)
+		clb1.set_clim(-0.1, 0.1)
+		clb2.set_clim(-0.03, 0.03)
 
 		# linestart = [116, 124]
 		# linestop = [193, 30]
@@ -659,6 +752,78 @@ class DFXM(object):
 		if self.rank == 0:
 			figstrain.savefig(self.directory + '/int-ppos-map_%s_%s-%s-%s-%s.pdf' % (self.datatype, self.roi[0], self.roi[1], self.roi[2], self.roi[3], ))
 		return figstrain, axppos
+
+	def plotPPOSBig(self, gaussarray):
+		# sns.set_context("talk")
+
+		fig0, ax0 = plt.subplots(1, 1)
+		plt.tight_layout()
+		fig1, ax1 = plt.subplots(1, 1)
+		plt.tight_layout()
+		fig2, ax2 = plt.subplots(1, 1)
+		plt.tight_layout()
+
+		fig0.set_size_inches(7,7)
+		fig1.set_size_inches(7,7)
+		fig2.set_size_inches(7,7)
+
+		fig0.set_dpi(500)
+		fig1.set_dpi(500)
+		fig2.set_dpi(500)
+
+
+		amplpic = np.zeros((np.shape(gaussarray[:, :, 0])))
+		midppic = np.zeros((np.shape(gaussarray[:, :, 0])))
+		fwhmpic = np.zeros((np.shape(gaussarray[:, :, 0])))
+
+		amplpic[:, :] = gaussarray[:, :, 0]
+		midppic[:, :] = gaussarray[:, :, 1]
+		fwhmpic[:, :] = 2*math.sqrt(2*math.log(2))*gaussarray[:, :, 2]
+
+
+		# midppic[midppic < -0.005] = -0.005
+		# midppic[midppic > 0.02] = 0.02
+		# fwhmpic[fwhmpic < -0.1] = -0.1
+		# fwhmpic[fwhmpic > -0.02] = -0.02
+		# amplpic[amplpic < 0.] = 0.
+		# amplpic[amplpic > 100.] = 100.
+
+		im0 = ax0.imshow(amplpic[3:-3, 3:-3], cmap='jet', interpolation='None')
+		im1 = ax1.imshow(fwhmpic[3:-3, 3:-3], cmap='BrBG', interpolation='None')
+		im2 = ax2.imshow(midppic[3:-3, 3:-3] , cmap='BrBG', interpolation='None')
+
+
+
+		ax0.set_title('AMPL')
+		ax1.set_title('FWHM')
+		ax2.set_title('MIDP')
+
+		def fmt(x,  pos):
+			a,  b = '{:.2e}'.format(x).split('e')
+			b = int(b)
+			return r'${} \times 10^{{{}}}$'.format(a,  b)
+
+		fig0.subplots_adjust(right=0.8)
+		fig1.subplots_adjust(right=0.8)
+		fig2.subplots_adjust(right=0.8)
+
+		cbar_ax0 = fig0.add_axes([0.85,  0.1,  0.05,  0.8])
+		cbar_ax1 = fig1.add_axes([0.85,  0.1,  0.05,  0.8])
+		cbar_ax2 = fig2.add_axes([0.85,  0.1,  0.05,  0.8])
+
+		clb0 = fig0.colorbar(im0, cax=cbar_ax0)  # , format=ticker.FuncFormatter(fmt))
+		clb1 = fig1.colorbar(im1, cax=cbar_ax1)  # , format=ticker.FuncFormatter(fmt))
+		clb2 = fig2.colorbar(im2, cax=cbar_ax2)  # , format=ticker.FuncFormatter(fmt))
+
+		# # clb0.set_clim(0., 200.)
+		# clb2.set_clim(-0.1, 0.1)
+		# clb1.set_clim(-0.03, 0.03)
+
+		if self.rank == 0:
+			fig0.savefig(self.directory + '/ampl-map_%s_%s-%s-%s-%s.pdf' % (self.datatype, self.roi[0], self.roi[1], self.roi[2], self.roi[3], ))
+			fig1.savefig(self.directory + '/fwhm-map_%s_%s-%s-%s-%s.pdf' % (self.datatype, self.roi[0], self.roi[1], self.roi[2], self.roi[3], ))
+			fig2.savefig(self.directory + '/midp-map_%s_%s-%s-%s-%s.pdf' % (self.datatype, self.roi[0], self.roi[1], self.roi[2], self.roi[3], ))
+		#return figstrain, axppos
 
 	def plotStrainHeatmap(self, alldata):
 		img = np.zeros((len(alldata[0, :, 0]), len(alldata[0, 0, :]), 4),  dtype=np.uint8)
