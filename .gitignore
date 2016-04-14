@@ -2,3 +2,5 @@ other/
 output/
 comparefilters/
 *.DS_Store
+*.pyc
+resolution_paper/plots/
