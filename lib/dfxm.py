@@ -158,7 +158,7 @@ class DFXM(object):
 		from scipy.optimize import curve_fit
 
 		try:
-			popt, pcov = curve_fit(self.gaus, x, y, p0=[max(y), x[np.argmax(y)], -3.E-3], maxfev=1000)
+			popt, pcov = curve_fit(self.gaus, x, y, p0=[max(y), x[np.argmax(y)], .3], maxfev=10000)
 			return popt, pcov
 		except RuntimeError:
 			pass
