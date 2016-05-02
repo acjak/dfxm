@@ -62,18 +62,27 @@ maxcurrent = max(data.meta[:, 3])
 # pixel per mm on detector:
 ppm = 630
 
+cal_array = np.zeros((len(a),len(b)))
+
+print np.shape(cal_array)
+
 fig, ax = plt.subplots()
 
-ax.imshow(cal_image, cmap='Greens', interpolation=None)
-ax.autoscale(False)
+#ax.imshow(cal_image, cmap='Greens', interpolation=None)
+#ax.autoscale(False)
 
 n = 0
+
+u = 0
+
 for i in a:
+    v = 0
     for j in b:
         xpos = (a0-i)*ppm
         ypos = -(b0-j)*ppm
-        print ypos, j, xpos, i
-        print maxcurrent, data.meta[n, 3]
+        # print ypos, j, xpos, i
+        # print maxcurrent, data.meta[n, 3]
+        # print u,v
         ind = data.getIndex(i, j, c[0])
         data.roi = [lc/2-xpos-xlen, lc/2-xpos+xlen, lc/2-ypos-ylen, lc/2-ypos+ylen]
 
@@ -84,6 +93,9 @@ for i in a:
 
         img = data.getImage(ind[0], False)
         img = maxcurrent*img/data.meta[n, 3]
+
+        cal_array[v, u] = np.sum(img)
+
         # Add ring current normalization and check the detx/detz directions of the result.
         n += 1
         print "Image #:", n
@@ -96,6 +108,20 @@ for i in a:
         # ax.plot([roi[0], roi[1]], [roi[2], roi[2]], color='black')
 
         cal_image[lc/2-ypos-ylen:lc/2-ypos+ylen, lc/2-xpos-xlen:lc/2-xpos+xlen] = img
+        v += 1
 
-ax.imshow(cal_image, cmap='Greens', interpolation=None)
-fig.savefig(data.directory + '/cal_image.png')
+    u += 1
+
+xr = np.arange(-1024., 1024., 2048./31)
+yr = np.arange(-1024., 1024., 2048./31)
+
+img_interp = inter.interp2d(xr,yr,cal_array, kind='cubic')
+
+img_zoom = img_interp(np.arange(-1024.,1024,1.), np.arange(-1024.,1024,1.))
+
+img_zoom = img_zoom/np.max(img_zoom)
+
+np.save('tmp/detector_norm.npy', img_zoom)
+
+# ax.imshow(img_zoom, cmap='Greens', interpolation=None)
+# fig.savefig(data.directory + '/cal_image.png')
