@@ -514,7 +514,7 @@ class GetEdfData(object):
 		return im
 
 	def cleanImage(self, img):
-		img = self.rfilter(img, 18, 3)
+		# img = self.rfilter(img, 18, 3)
 		img[img < 0] = 0
 
 		return img
