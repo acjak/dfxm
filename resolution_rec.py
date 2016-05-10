@@ -29,6 +29,9 @@ print rank, mpisize
 if rank == 0:
 	start = time.time()
 
+# for i in range(len(sys.argv)):
+# 	print i, sys.argv[i]
+
 path = sys.argv[1]  # '/data/hxrm/Resolution_march_2016/rollscan_center'
 bg_path = '/data/hxrm/Resolution_march_2016/rollscan_top_far'
 
@@ -63,9 +66,9 @@ meta = data.getMetaArray()
 a, b, c = data.getMetaValues()
 
 
-def plotImageArray():
+def plotImageArray(sampletitle):
 	plt.figure(figsize=(14, 14))
-	gs1 = matplotlib.gridspec.GridSpec(6, 6)
+	gs1 = matplotlib.gridspec.GridSpec(8, 8)
 	gs1.update(wspace=0.025,  hspace=0.03)
 
 	for i in range(len(data.imgarray[:, 0, 0])):
@@ -77,7 +80,7 @@ def plotImageArray():
 		axarr.xaxis.set_major_formatter(plt.NullFormatter())
 		axarr.yaxis.set_major_formatter(plt.NullFormatter())
 
-	plt.savefig(data.directory + '/%s_array.pdf' % ('resolution'))
+	plt.savefig(data.directory + '/%s_array.pdf' % (sampletitle))
 
 
 def makeIndexList_ROLL(a, b, c):
@@ -85,7 +88,7 @@ def makeIndexList_ROLL(a, b, c):
 
 	for i in a:
 		# print rank, float(a[i]-data.alpha0), float(b[i]-data.beta0)#, i
-		index = data.getIndex(i, b[15], c[0])
+		index = data.getIndex(i, b[len(b)/2], c[0])
 		index_list.append(index[0])
 
 	xr = a-data.alpha0
@@ -100,7 +103,7 @@ def makeIndexList_TT(a, b, c):
 
 	for i in b:
 		# print rank, float(a[i]-data.alpha0), float(b[i]-data.beta0)#, i
-		index = data.getIndex(a[15], i, c[0])
+		index = data.getIndex(a[len(a)/2], i, c[0])
 		index_list.append(index[0])
 
 	xr = b-data.beta0
@@ -121,7 +124,7 @@ if sys.argv[3] == 'ROLL':
 if rank == 0:
 	print np.shape(data.imgarray)
 	if test_switch:
-		plotImageArray()
+		plotImageArray(sampletitle)
 		# tools.plotPPOS(gaussarray)
 		tools.plotPPOSBig(gaussarray)
 		saveGaussArray(sampletitle, gaussarray)
