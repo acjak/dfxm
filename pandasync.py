@@ -3,6 +3,7 @@
 import os, sys
 
 os.system('rsync -avz /Users/andcj/PD_scripts/*.py jakobsen@panda.hpc.dtu.dk:dfxm/.')
+os.system('rsync -avz /Users/andcj/PD_scripts/*.sh jakobsen@panda.hpc.dtu.dk:dfxm/.')
 os.system('rsync -avz /Users/andcj/PD_scripts/lib jakobsen@panda.hpc.dtu.dk:dfxm/.')
 os.system('rsync -avz /Users/andcj/PD_scripts/resolution_paper jakobsen@panda.hpc.dtu.dk:dfxm/.')
 
