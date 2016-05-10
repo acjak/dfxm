@@ -4,3 +4,4 @@ comparefilters/
 *.DS_Store
 *.pyc
 resolution_paper/plots/
+reciprocal_paper/resolution_data_gauss_fitted/
