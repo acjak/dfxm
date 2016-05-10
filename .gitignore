@@ -3,5 +3,8 @@ output/
 comparefilters/
 *.DS_Store
 *.pyc
+*.log
+*.png
 resolution_paper/plots/
-reciprocal_paper/resolution_data_gauss_fitted/
+resolution_paper/reciprocal_data_gauss_fitted/
+resolution_paper/input/
