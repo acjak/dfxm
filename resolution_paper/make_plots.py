@@ -4,11 +4,11 @@ import math
 import numpy as np
 
 def makePlots(sampletitle, amplpic, midppic, fwhmpic):
-    fig0, ax0 = plt.subplots(1, 1, dpi=500, figsize=[7,7])
+    fig0, ax0 = plt.subplots(1, 1, dpi=150, figsize=[5, 5])
     # plt.tight_layout()
-    fig1, ax1 = plt.subplots(1, 1, dpi=500, figsize=[7,7])
+    fig1, ax1 = plt.subplots(1, 1, dpi=150, figsize=[5, 5])
     # plt.tight_layout()
-    fig2, ax2 = plt.subplots(1, 1, dpi=500, figsize=[7,7])
+    fig2, ax2 = plt.subplots(1, 1, dpi=150, figsize=[5, 5])
     # plt.tight_layout()
 
     # fig0.set_figsize_inches(7,7)
@@ -44,9 +44,13 @@ def makePlots(sampletitle, amplpic, midppic, fwhmpic):
     # clb2.set_clim(-0.1, 0.1)
     # clb1.set_clim(-0.03, 0.03)
 
-    fig0.savefig('plots/ampl-map_%s.pdf' % (sampletitle))
-    fig1.savefig('plots/fwhm-map_%s.pdf' % (sampletitle))
-    fig2.savefig('plots/midp-map_%s.pdf' % (sampletitle))
+    fig0.savefig('plots/%s-ampl.pdf' % (sampletitle))
+    fig1.savefig('plots/%s-fwhm.pdf' % (sampletitle))
+    fig2.savefig('plots/%s-midp.pdf' % (sampletitle))
+
+    fig0.clf()
+    fig1.clf()
+    fig2.clf()
     #return figstrain, axppos
 
 def makeSmallArrays(gaussarray, midprange, fwhmrange, amplrange):
@@ -74,8 +78,8 @@ def makeSmallArrays(gaussarray, midprange, fwhmrange, amplrange):
 sampletitle = 'rollscan_center_roll'
 gaussarray = np.load('reciprocal_data_gauss_fitted/rollscan_center_roll_data.npy')
 
-midprange = [-0.05, 0.05]
-fwhmrange = [-0.1, -0.02]
+midprange = -1 # [-0.05, 0.05]
+fwhmrange = -1 # [-0.1, -0.02]
 amplrange = [0, 100.]
 
 amplpic, fwhmpic, midppic = makeSmallArrays(gaussarray, midprange, fwhmrange, amplrange)
@@ -86,7 +90,7 @@ makePlots(sampletitle, amplpic, midppic, fwhmpic)
 sampletitle = 'rollscan_center_tt'
 gaussarray = np.load('reciprocal_data_gauss_fitted/rollscan_center_tt_data.npy')
 
-midprange = [-0.05, 0.05]
+midprange = -1 # [-0.05, 0.05]
 fwhmrange = -1  # [-0.1, -0.02]
 amplrange = [0, 100.]
 
@@ -110,9 +114,193 @@ makePlots(sampletitle, amplpic, midppic, fwhmpic)
 sampletitle = 'rollscan_top_roll'
 gaussarray = np.load('reciprocal_data_gauss_fitted/rollscan_top_roll_data.npy')
 
-midprange = [0, 0.1]
+midprange = -1 # [0, 0.1]
 fwhmrange = -1  # [-0.1, -0.02]
-amplrange = [0, 200.]
+amplrange = [0, 100.]
+
+amplpic, fwhmpic, midppic = makeSmallArrays(gaussarray, midprange, fwhmrange, amplrange)
+
+makePlots(sampletitle, amplpic, midppic, fwhmpic)
+
+sampletitle = 'rollscan_bot_tt'
+gaussarray = np.load('reciprocal_data_gauss_fitted/rollscan_bot_tt_data.npy')
+
+midprange = -1  # [-0.05, 0.05]
+fwhmrange = -1  # [-0.1, -0.02]
+amplrange = [0, 100.]
+
+amplpic, fwhmpic, midppic = makeSmallArrays(gaussarray, midprange, fwhmrange, amplrange)
+
+makePlots(sampletitle, amplpic, midppic, fwhmpic)
+
+
+sampletitle = 'rollscan_bot_roll'
+gaussarray = np.load('reciprocal_data_gauss_fitted/rollscan_bot_roll_data.npy')
+
+midprange = -1 # [0, 0.1]
+fwhmrange = -1  # [-0.1, -0.02]
+amplrange = [0, 100.]
+
+amplpic, fwhmpic, midppic = makeSmallArrays(gaussarray, midprange, fwhmrange, amplrange)
+
+makePlots(sampletitle, amplpic, midppic, fwhmpic)
+
+sampletitle = 'rollscan_left_tt'
+gaussarray = np.load('reciprocal_data_gauss_fitted/rollscan_left_tt_data.npy')
+
+midprange = -1  # [-0.05, 0.05]
+fwhmrange = -1  # [-0.1, -0.02]
+amplrange = [0, 100.]
+
+amplpic, fwhmpic, midppic = makeSmallArrays(gaussarray, midprange, fwhmrange, amplrange)
+
+makePlots(sampletitle, amplpic, midppic, fwhmpic)
+
+
+sampletitle = 'rollscan_left_roll'
+gaussarray = np.load('reciprocal_data_gauss_fitted/rollscan_left_roll_data.npy')
+
+midprange = -1 # [0, 0.1]
+fwhmrange = -1  # [-0.1, -0.02]
+amplrange = [0, 100.]
+
+amplpic, fwhmpic, midppic = makeSmallArrays(gaussarray, midprange, fwhmrange, amplrange)
+
+makePlots(sampletitle, amplpic, midppic, fwhmpic)
+
+sampletitle = 'rollscan_right_tt'
+gaussarray = np.load('reciprocal_data_gauss_fitted/rollscan_right_tt_data.npy')
+
+midprange = -1  # [-0.05, 0.05]
+fwhmrange = -1  # [-0.1, -0.02]
+amplrange = [0, 100.]
+
+amplpic, fwhmpic, midppic = makeSmallArrays(gaussarray, midprange, fwhmrange, amplrange)
+
+makePlots(sampletitle, amplpic, midppic, fwhmpic)
+
+
+sampletitle = 'rollscan_right_roll'
+gaussarray = np.load('reciprocal_data_gauss_fitted/rollscan_right_roll_data.npy')
+
+midprange = -1 # [0, 0.1]
+fwhmrange = -1  # [-0.1, -0.02]
+amplrange = [0, 100.]
+
+amplpic, fwhmpic, midppic = makeSmallArrays(gaussarray, midprange, fwhmrange, amplrange)
+
+makePlots(sampletitle, amplpic, midppic, fwhmpic)
+
+sampletitle = 'rollscan_big_tt'
+gaussarray = np.load('reciprocal_data_gauss_fitted/rollscan_big_tt_data.npy')
+
+midprange = -1  # [-0.05, 0.05]
+fwhmrange = -1  # [-0.1, -0.02]
+amplrange = [0, 500.]
+
+amplpic, fwhmpic, midppic = makeSmallArrays(gaussarray, midprange, fwhmrange, amplrange)
+
+makePlots(sampletitle, amplpic, midppic, fwhmpic)
+
+
+sampletitle = 'rollscan_big_roll'
+gaussarray = np.load('reciprocal_data_gauss_fitted/rollscan_big_roll_data.npy')
+
+midprange = -1 # [0, 0.1]
+fwhmrange = -1  # [-0.1, -0.02]
+amplrange = [0, 500.]
+
+amplpic, fwhmpic, midppic = makeSmallArrays(gaussarray, midprange, fwhmrange, amplrange)
+
+makePlots(sampletitle, amplpic, midppic, fwhmpic)
+
+sampletitle = 'rollscan_top_far_tt'
+gaussarray = np.load('reciprocal_data_gauss_fitted/rollscan_top_far_tt_data.npy')
+
+midprange = -1  # [-0.05, 0.05]
+fwhmrange = -1  # [-0.1, -0.02]
+amplrange = [0, 100.]
+
+amplpic, fwhmpic, midppic = makeSmallArrays(gaussarray, midprange, fwhmrange, amplrange)
+
+makePlots(sampletitle, amplpic, midppic, fwhmpic)
+
+
+sampletitle = 'rollscan_top_far_roll'
+gaussarray = np.load('reciprocal_data_gauss_fitted/rollscan_top_far_roll_data.npy')
+
+midprange = -1 # [0, 0.1]
+fwhmrange = -1  # [-0.1, -0.02]
+amplrange = [0, 100.]
+
+amplpic, fwhmpic, midppic = makeSmallArrays(gaussarray, midprange, fwhmrange, amplrange)
+
+makePlots(sampletitle, amplpic, midppic, fwhmpic)
+
+sampletitle = 'rollscan_bot_far_tt'
+gaussarray = np.load('reciprocal_data_gauss_fitted/rollscan_bot_far_tt_data.npy')
+
+midprange = -1  # [-0.05, 0.05]
+fwhmrange = -1  # [-0.1, -0.02]
+amplrange = [0, 100.]
+
+amplpic, fwhmpic, midppic = makeSmallArrays(gaussarray, midprange, fwhmrange, amplrange)
+
+makePlots(sampletitle, amplpic, midppic, fwhmpic)
+
+
+sampletitle = 'rollscan_bot_far_roll'
+gaussarray = np.load('reciprocal_data_gauss_fitted/rollscan_bot_far_roll_data.npy')
+
+midprange = -1 # [0, 0.1]
+fwhmrange = -1  # [-0.1, -0.02]
+amplrange = [0, 100.]
+
+amplpic, fwhmpic, midppic = makeSmallArrays(gaussarray, midprange, fwhmrange, amplrange)
+
+makePlots(sampletitle, amplpic, midppic, fwhmpic)
+
+sampletitle = 'rollscan_left_far_tt'
+gaussarray = np.load('reciprocal_data_gauss_fitted/rollscan_left_far_tt_data.npy')
+
+midprange = -1  # [-0.05, 0.05]
+fwhmrange = -1  # [-0.1, -0.02]
+amplrange = [0, 100.]
+
+amplpic, fwhmpic, midppic = makeSmallArrays(gaussarray, midprange, fwhmrange, amplrange)
+
+makePlots(sampletitle, amplpic, midppic, fwhmpic)
+
+
+sampletitle = 'rollscan_left_far_roll'
+gaussarray = np.load('reciprocal_data_gauss_fitted/rollscan_left_far_roll_data.npy')
+
+midprange = -1 # [0, 0.1]
+fwhmrange = -1  # [-0.1, -0.02]
+amplrange = [0, 100.]
+
+amplpic, fwhmpic, midppic = makeSmallArrays(gaussarray, midprange, fwhmrange, amplrange)
+
+makePlots(sampletitle, amplpic, midppic, fwhmpic)
+
+sampletitle = 'rollscan_right_far_tt'
+gaussarray = np.load('reciprocal_data_gauss_fitted/rollscan_right_far_tt_data.npy')
+
+midprange = -1  # [-0.05, 0.05]
+fwhmrange = -1  # [-0.1, -0.02]
+amplrange = [0, 100.]
+
+amplpic, fwhmpic, midppic = makeSmallArrays(gaussarray, midprange, fwhmrange, amplrange)
+
+makePlots(sampletitle, amplpic, midppic, fwhmpic)
+
+
+sampletitle = 'rollscan_right_far_roll'
+gaussarray = np.load('reciprocal_data_gauss_fitted/rollscan_right_far_roll_data.npy')
+
+midprange = -1 # [0, 0.1]
+fwhmrange = -1  # [-0.1, -0.02]
+amplrange = [0, 100.]
 
 amplpic, fwhmpic, midppic = makeSmallArrays(gaussarray, midprange, fwhmrange, amplrange)
 
