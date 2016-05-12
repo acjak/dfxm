@@ -2,8 +2,8 @@
 """blah."""
 
 from lib.getedfdata import *
-from lib.gauss import *
-# import numpy as np
+
+import numpy as np
 
 # import matplotlib
 import matplotlib.pylab as plt
@@ -36,7 +36,7 @@ filename = 'ff2_'
 sampletitle = 'topo_fancy_txt_'
 bg_filename = 'bg_ff_2x2_0p5s_'
 
-datatype = 'topotomo'
+datatype = 'strain_tt'
 
 # poi = [1023, 1023]
 # size = [600, 300]
@@ -51,34 +51,42 @@ meta = data.getMetaArray()
 # hist, datx, daty = data.makeMeanGrid()
 a, b, c = data.getMetaValues()
 
+fulldata = [a,b,c]
+print np.shape(fulldata)
+
 data.setTest(True)
 data.adjustOffset(False)
 
 ab_vals = list(itertools.product(a, b))
 
-print a
-print b
-
 # Chose part of data set for a specific CPU (rank).
 local_n = len(ab_vals)/size
 istart = rank*local_n
 istop = (rank+1)*local_n
-local_data = c[istart:istop]
+local_data = b[istart:istop]
+# local_data = fulldata[istart:istop]
+
+print len(a), len(b), len(c)
 
 # if rank == 0:
 # 	end = time.time()
 # 	print "Init time: ", end-start
 
-fig = plt.figure()
+fig = plt.Figure()
 
-for i in range(len(local_data)):
-	ax.clf()
+# for i in range(len(local_data)):
+
+for i,beta in enumerate(local_data):
 	ax = fig.add_subplot(111)
-	index = data.getIndex(float(local_data[i][0]), float(local_data[i][1]), float(local_data[1]))
-	print index, rank, local_data[i][0], local_data[i][1]
+	#print rank, local_data[i][0], local_data[i][1], local_data[1]
+	print rank, a[len(a)/2], beta, c[len(c)/2]
+	#index = data.getIndex(float(local_data[i][0]), float(local_data[i][1]), float(local_data[1]))
+	index = data.getIndex(a[len(a)/2], beta, c[len(c)/2])
+	print index
 	img = data.getImage(index[0], False)
 	ax.imshow(img, cmap='Greens', interpolation='none')
-	ax.text(5, 2, local_data[i][0])
+	ax.text(5, 2, beta)
 	# plt.show()
 	# plt.savefig('output/topofancy_diamond2/topo_ff_angletext' + str("%04d" % (i+rank*local_n))+'.png')  #
-	plt.savefig(data.directory + 'topo_ff_angletext' + str("%04d" % (i+rank*local_n))+'.png')  # str(i+80+rank*local_n))
+	plt.savefig(data.directory + '/topo_ff_angletext' + str("%04d" % (i+rank*local_n))+'.png')  # str(i+80+rank*local_n))
+	fig.clf()
