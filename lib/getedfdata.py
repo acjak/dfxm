@@ -191,7 +191,7 @@ class GetEdfData(object):
 	def getMeanData(self):
 		meandatafile = 'output/datamean_%s.txt' % self.dirhash
 
-		if os.path.isfile(meandatafile) == True:
+		if os.path.isfile(meandatafile):
 			self.data_mean = np.loadtxt(meandatafile)
 		else:
 			self.data_mean = np.zeros((len(self.data_files)))
@@ -404,7 +404,7 @@ class GetEdfData(object):
 
 		print "Starting meta data collection."
 
-		if os.path.isfile(metadatafile) == True:
+		if os.path.isfile(metadatafile):
 			print "Reading meta data from file."
 			# self.readFullMetaFile(fullmetadatafile, metadatafile, indexfile)
 			self.readMetaFile(metadatafile)
@@ -490,14 +490,14 @@ class GetEdfData(object):
 
 		if True:
 			img = EdfFile.EdfFile(file_with_path)
-			if self.adjustoffset is True:
+			if self.adjustoffset:
 				alpha = self.meta[index, 0]
 				a_index = np.where(self.alphavals == alpha)
 				roi = self.adj_array[a_index[0]][0]
 			else:
 				roi = self.roi
 
-			if full is True:
+			if full:
 				# print np.shape(self.bg_combined_full)
 				im = img.GetData(0).astype(np.int64)-self.bg_combined_full
 			else:
