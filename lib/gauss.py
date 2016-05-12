@@ -3,9 +3,9 @@ import numpy as np
 
 import matplotlib
 matplotlib.use('Agg')
-print "test1"
+
 import matplotlib.pylab as plt
-print "test2"
+
 
 def gaus(x,a,x0,sigma):
 	return a*np.exp(-(x-x0)**2/(2*sigma**2))
@@ -31,7 +31,7 @@ y = gaus(xr, 3., 0.2, 0.03)
 
 popt, pcov = fitGaussian(xr, y)
 
-print popt
+
 
 plt.plot(xr, y)
 plt.savefig('gauss_test.png')
