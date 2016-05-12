@@ -526,20 +526,27 @@ class GetEdfData(object):
 		return ret / n
 
 	def rfilter(self, img, nstp, slen):
+		start = time.time()
 		mask = np.ones(np.shape(img))
 		stp = 180./nstp
 
 		stack = np.zeros((len(img[:, 0]), len(img[0, :]), nstp))
 
-		for n in range(nstp):
+		def smooth(a, n):
+			"""Do a moving average."""
+			ret = np.cumsum(a, dtype=float)
+			ret[n:] = ret[n:] - ret[:-n]
+			return ret / n
+
+		for n in xrange(nstp):
 			rot = n*stp
 			imgr = scipy.ndimage.interpolation.rotate(img, rot)
 			mskr = scipy.ndimage.interpolation.rotate(mask, rot)
 
-			for j in range(len(mskr[:, 0])):
+			for j, xvals in enumerate(mskr[:,0]):  # range(len(mskr[:, 0])):
 				ids = np.nonzero(mskr[j, :])
-				if bool(ids[0].any()):
-					imgr[j, ids[0]] = self.smooth(imgr[j, ids[0]], slen)
+				if ids[0].any():
+					imgr[j, ids[0]] = smooth(imgr[j, ids[0]], slen)
 
 			imgb = scipy.ndimage.interpolation.rotate(imgr, -rot)
 
@@ -551,6 +558,8 @@ class GetEdfData(object):
 				imgb = imgb[idx0[0]:idx1[0], idx0[1]:idx1[1]]
 
 			stack[:, :, n] = imgb
+		end = time.time()
+		print "Time: ", end-start
 		return np.amin(stack, 2)
 
 	def printMeta(self):
