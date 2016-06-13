@@ -32,8 +32,11 @@ if rank == 0:
 # for i in range(len(sys.argv)):
 # 	print i, sys.argv[i]
 
-path = '/data/hxrm/Resolution_march_2016/rollscan_big'
-bg_path = '/data/hxrm/Resolution_march_2016/rollscan_top_far'
+path = '/u/data/andcj/Resolution_march_2016/rollscan_big'
+bg_path = '/u/data/andcj/Resolution_march_2016/rollscan_top_far'
+
+# path = '/data/hxrm/Resolution_march_2016/rollscan_big'
+# bg_path = '/data/hxrm/Resolution_march_2016/rollscan_top_far'
 
 filename = 'scan1_'
 bg_filename = 'scan1_0960.edf'
@@ -43,9 +46,9 @@ datatype = 'res_paper'
 
 test_switch = True
 
-poi = [1134, 1024]
+poi = [1134, 1224]  # -float(sys.argv[1])]
 # size = [2, 20]
-size = [50, 10]
+size = [50, 50]
 
 pixelsize = 180.  # 180.
 
@@ -105,18 +108,33 @@ def plotImageArray(imgarray, sampletitle, detnorm):
 def plotPlots(linearray, sampletitle, roi):
 	plt.figure(figsize=(14, 14))
 	gs1 = matplotlib.gridspec.GridSpec(8, 8)
-	gs1.update(wspace=0.025,  hspace=0.03)
+	gs1.update(wspace=0.25,  hspace=0.3)
+	from scipy.signal import argrelextrema
 
-	for i in range(len(linearray[0, :])):
+	for i, li in enumerate(linearray):  # [0, :]):
 
 		axarr = plt.subplot(gs1[i])
 
-		axarr.plot(linearray[:, i])
-		# axarr.set_ylim(0,1)
-		axarr.set_title('%.4f, %.4f' % (float(a[i]), float(b[i])))
+		lin = linearray[:, i]
+
+		axarr.plot(lin)
+
+		try:
+			ma = np.mean(lin[argrelextrema(lin, np.greater)[0]])
+			mi = np.mean(lin[argrelextrema(lin, np.less)[0]])
+			axarr.plot([0,len(lin)],[ma,ma])
+			axarr.plot([0,len(lin)],[mi,mi])
+			axarr.set_title('{:.2%}'.format((ma-mi)/ma))
+		except IndexError:
+			print "Index error."
+
+		axarr.set_ylim(0.6,1)
+		# set_title('%.4f, %.4f' % (float(a[i]), float(b[i])))
 		axarr.xaxis.set_major_formatter(plt.NullFormatter())
 		axarr.yaxis.set_major_formatter(plt.NullFormatter())
 
+	print data.directory, sampletitle, str(roi)
+	# plt.savefig('{}/{}_{}_lines.pdf'.format(data.directory, sampletitle, str(roi)))
 	plt.savefig(data.directory + '/%s_%s_lines.pdf' % (sampletitle, str(roi)))
 
 def plotHists(linearray, sampletitle, roi):
@@ -147,7 +165,7 @@ def getSTD(imgarray, sampletitle, detnorm):
 
 def getLine(imgarray, detnorm):
 	line_array = np.zeros((len(imgarray[0, 0, :]),len(imgarray[:, 0, 0])))
-	for i in range(len(line_array[0, :])):
+	for i, li in enumerate(line_array):
 		line = np.sum(imgarray[i, :, :]*detnorm, axis=0)
 		# line[line<100] = 1
 		line_array[:, i] = line/max(line)
@@ -199,6 +217,10 @@ detnorm = np.load('tmp/detector_norm.npy')[roi[2]:roi[3],roi[0]:roi[1]]
 
 index_list_tt = makeIndexList_TT(a, b, c)
 
+print a
+print b
+print c
+
 # index_list_roll = makeIndexList_ROLL(a, b, c)
 
 b_d = convertToDegrees(b)
@@ -236,19 +258,24 @@ fig, ax = plt.subplots(figsize=(7,7))
 for i in range(len(tt_line[0, :])):
 	ax.plot(tt_line[:,i])
 
+figcenter, axcenter = plt.subplots(figsize=(7,7))
+
+axcenter.plot(tt_line[:,25])
+np.savetxt(data.directory + '/' + sampletitle + '_' + str(roi) + '.txt', tt_line[:,25])
+
 fig2, ax2 = plt.subplots(figsize=(7,7))
 # fig2, ax2 = plt.subplots(figsize=(7,7))
 
 av_line = []
 
-for i in range(len(tt_line[0, :])):
-	hist,values = np.histogram(tt_line[:,i])
-	av_line.append(np.std(hist))
-
-ax2.plot(b_d, av_line)
+# for i in range(len(tt_line[0, :])):
+# 	hist,values = np.histogram(tt_line[:,i])
+# 	av_line.append(np.std(hist))
+#
+# ax2.plot(b_d, av_line)
 
 plotPlots(tt_line, sampletitle, roi)
-plotHists(tt_line, sampletitle, roi)
+# plotHists(tt_line, sampletitle, roi)
 
 # legend_tt = '2T Ampl:' + str(ampl_tt) + '\n 2T Midp:' + str(midp_tt) + '\n 2T FWHM:' + str(fwhm_tt)
 # legend_roll = 'Roll Ampl:' + str(ampl_roll) + '\n Roll Midp:' + str(midp_roll) + '\n Roll FWHM:' + str(fwhm_roll)
@@ -272,3 +299,4 @@ plotHists(tt_line, sampletitle, roi)
 
 fig.savefig(data.directory + '/' + sampletitle + '_' + str(roi) + '.pdf')
 fig2.savefig(data.directory + '/' + sampletitle + '_average' + str(roi) + '.pdf')
+figcenter.savefig(data.directory + '/' + sampletitle + '_center' + str(roi) + '.pdf')
