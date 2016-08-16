@@ -35,8 +35,8 @@ if rank == 0:
 path = '/u/data/andcj/Resolution_march_2016/rollscan_big'
 bg_path = '/u/data/andcj/Resolution_march_2016/rollscan_top_far'
 
-# path = '/data/hxrm/Resolution_march_2016/rollscan_big'
-# bg_path = '/data/hxrm/Resolution_march_2016/rollscan_top_far'
+# path = '/u/data/andcj/Resolution_march_2016/rollscan_big'
+# bg_path = '/u/data/andcj/Resolution_march_2016/rollscan_top_far'
 
 filename = 'scan1_'
 bg_filename = 'scan1_0960.edf'

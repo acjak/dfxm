@@ -34,21 +34,20 @@ import scipy.ndimage
 import EdfFile
 import hashlib
 import warnings
+import time
+import matplotlib
+
 
 from os import listdir
-from os.path import isfile,  join
+from os.path import isfile, join
 
-from time import localtime,  strftime
-
-import matplotlib
-matplotlib.use('Agg')
-import matplotlib.pylab as plt
-
+from time import localtime, strftime
 
 # import seaborn as sns
 from mpi4py import MPI
 
-import time
+matplotlib.use('Agg')
+import matplotlib.pylab as plt
 
 
 class GetEdfData(object):
@@ -69,8 +68,16 @@ class GetEdfData(object):
 		in any information that is necessary.
 	"""
 
-	def __init__(self,  path, filename, bg_path, bg_filename, roi, datatype, test_switch):
-		super(GetEdfData,  self).__init__()
+	def __init__(
+		self,
+		path,
+		filename,
+		bg_path,
+		bg_filename,
+		roi,
+		datatype,
+		test_switch):
+		super(GetEdfData, self).__init__()
 
 		self.comm = MPI.COMM_WORLD
 		self.rank = self.comm.Get_rank()
@@ -82,12 +89,15 @@ class GetEdfData(object):
 		self.bg_path = bg_path
 		self.roi = roi
 		self.ts = test_switch
-		if test_switch:
-			self.makeOutputFolder()
+		# if test_switch:
+		self.makeOutputFolder()
 
 		self.getFilelists(filename, bg_filename)
 
-		self.dirhash = hashlib.md5(self.path + '/' + filename + str(len(self.data_files))).hexdigest()
+		self.dirhash = hashlib.md5(
+			self.path + '/' +
+			filename +
+			str(len(self.data_files))).hexdigest()
 		print self.dirhash
 		print self.path + '/' + filename
 
@@ -98,7 +108,7 @@ class GetEdfData(object):
 			self.printInfoToFile()
 
 	def makeOutputFolder(self):
-		timestamp = strftime("%d%m%y-%H%M",  localtime())
+		timestamp = strftime("%d%m%y-%H%M", localtime())
 		self.directory = 'output/' + timestamp
 
 		if self.rank == 0:
@@ -108,8 +118,10 @@ class GetEdfData(object):
 
 	def printInfoToFile(self):
 		self.infFile = self.directory + "/inf.txt"
-		with open(self.infFile,  "a") as myfile:
-			myfile.write("Datatype: %s \nSampletitle: %s \nPath: %s \n" % (self.datatype, self.sampletitle, self.path))
+		with open(self.infFile, "a") as myfile:
+			myfile.write(
+				"Datatype: %s \nSampletitle: %s \nPath: %s \n" %
+				(self.datatype, self.sampletitle, self.path))
 			myfile.write("ROI: %s \n" % (str(self.roi)))
 
 			myfile.write("\n\n\n")
@@ -120,9 +132,11 @@ class GetEdfData(object):
 	def adjustOffset(self, case):
 		self.adjustoffset = case
 
-	def getFilelists(self,  filename,  bg_filename):
-		onlyfiles = [f for f in listdir(self.path) if isfile(join(self.path,  f))]
-		onlyfiles_bg = [f for f in listdir(self.bg_path) if isfile(join(self.bg_path,  f))]
+	def getFilelists(self, filename, bg_filename):
+		onlyfiles = [f for f in listdir(self.path) if isfile(join(self.path, f))]
+		onlyfiles_bg = [
+			f for f in listdir(self.bg_path) if
+			isfile(join(self.bg_path, f))]
 
 		self.data_files = []
 		self.bg_files = []
@@ -138,29 +152,30 @@ class GetEdfData(object):
 	def getROI(self):
 		return self.roi
 
-	def setROI(self,  roi):
+	def setROI(self, roi):
 		self.roi = roi
 
 	def makeROIAdjustmentArray(self):
-		self.adj_array = np.zeros((len(self.alphavals),  4))
+		self.adj_array = np.zeros((len(self.alphavals), 4))
 		for i in range(len(self.alphavals)):
-			offset = (i-10)*2
-			self.adj_array[i,  0] = self.roi[0]
-			self.adj_array[i,  1] = self.roi[1]
-			self.adj_array[i,  2] = self.roi[2]+offset
-			self.adj_array[i,  3] = self.roi[3]+offset
+			offset = (i - 10) * 2
+			self.adj_array[i, 0] = self.roi[0]
+			self.adj_array[i, 1] = self.roi[1]
+			self.adj_array[i, 2] = self.roi[2] + offset
+			self.adj_array[i, 3] = self.roi[3] + offset
 
-	def adjustROI(self,  xoff,  yoff):
+	def adjustROI(self, xoff, yoff):
 		for i in range(len(self.alphavals)):
-			self.adj_array[i,  0] = self.adj_array[i,  0]+xoff
-			self.adj_array[i,  1] = self.adj_array[i,  1]+xoff
-			self.adj_array[i,  2] = self.adj_array[i,  2]+yoff
-			self.adj_array[i,  3] = self.adj_array[i,  3]+yoff
+			self.adj_array[i, 0] = self.adj_array[i, 0] + xoff
+			self.adj_array[i, 1] = self.adj_array[i, 1] + xoff
+			self.adj_array[i, 2] = self.adj_array[i, 2] + yoff
+			self.adj_array[i, 3] = self.adj_array[i, 3] + yoff
 
 	def getBGarray(self):
 		bg_file_with_path = self.bg_path + '/' + self.bg_files[0]
 		bg_class = EdfFile.EdfFile(bg_file_with_path)
-		bg_img = bg_class.GetData(0).astype(np.int64)[self.roi[2]:self.roi[3],  self.roi[0]:self.roi[1]]
+		bg_img = bg_class.GetData(0).astype(np.int64)[
+			self.roi[2]:self.roi[3], self.roi[0]:self.roi[1]]
 
 		self.bg_combined = np.zeros(np.shape(bg_img))
 
@@ -170,7 +185,8 @@ class GetEdfData(object):
 		for i in range(len(self.bg_files)):
 			bg_file_with_path = self.bg_path + '/' + self.bg_files[i]
 			bg_class = EdfFile.EdfFile(bg_file_with_path)
-			self.bg_combined += bg_class.GetData(0).astype(np.int64)[self.roi[2]:self.roi[3],  self.roi[0]:self.roi[1]]
+			self.bg_combined += bg_class.GetData(0).astype(np.int64)[
+				self.roi[2]:self.roi[3], self.roi[0]:self.roi[1]]
 
 		self.bg_combined /= len(self.bg_files)
 
@@ -187,7 +203,6 @@ class GetEdfData(object):
 
 		self.bg_combined_full /= len(self.bg_files)
 
-
 	def getMeanData(self):
 		meandatafile = 'output/datamean_%s.txt' % self.dirhash
 
@@ -200,8 +215,10 @@ class GetEdfData(object):
 			for i in range(len(self.data_files)):
 				file_with_path = self.path + '/' + self.data_files[i]
 				img = EdfFile.EdfFile(file_with_path)
-				self.data_mean[i] = img.GetData(0).astype(np.int64)[self.roi[2]:self.roi[3],  self.roi[0]:self.roi[1]].mean()-self.bg_combined.mean()
-			np.savetxt(meandatafile,  self.data_mean)
+				self.data_mean[i] = img.GetData(0).astype(np.int64)[
+					self.roi[2]:self.roi[3],
+					self.roi[0]:self.roi[1]].mean() - self.bg_combined.mean()
+			np.savetxt(meandatafile, self.data_mean)
 
 	def getMean(self):
 		self.getMeanData()
@@ -244,8 +261,10 @@ class GetEdfData(object):
 				metalist.append(header[ind])
 
 		metalist.extend(header['motor_pos'].split(' '))
-		metalist.extend(header['counter_pos'].split(' '))
-
+		try:
+			metalist.extend(header['counter_pos'].split(' '))
+		except:
+			pass
 
 			# if filenumber == 0:
 			# 	if ind != 'motor_pos' and ind != 'motor_mne' and ind != 'counter_pos' and ind != 'counter_mne':
@@ -274,7 +293,10 @@ class GetEdfData(object):
 			# if ind == 'motor_mne':
 			# if ind == 'counter_mne':
 		indexlist.extend(header['motor_mne'].split(' '))
-		indexlist.extend(header['counter_mne'].split(' '))
+		try:
+			indexlist.extend(header['counter_mne'].split(' '))
+		except KeyError:
+			pass
 
 		self.indexlist = indexlist
 
@@ -301,7 +323,7 @@ class GetEdfData(object):
 				pass
 
 	def makeFullMetaArray(self):
-		self.meta = np.zeros((len(self.data_files),  4))
+		self.meta = np.zeros((len(self.data_files), 4))
 
 		if self.rank == 0:
 			print "Reading meta data..."
@@ -313,11 +335,10 @@ class GetEdfData(object):
 		for i in range(len(self.data_files)):
 			self.fma.append(self.getFullHeader(i))
 
-
 		# print (np.bitwise_or.reduce(self.fma) == self.fma[0])
 
 	def makeMetaArray(self):
-		self.meta = np.zeros((len(self.data_files),  4))
+		self.meta = np.zeros((len(self.data_files), 4))
 
 		if self.rank == 0:
 			print "Reading meta data..."
@@ -327,31 +348,34 @@ class GetEdfData(object):
 				mot_array, motpos_array, det_array, detpos_array, srcur = self.getHeader(i)
 			except ValueError:
 				mot_array, motpos_array, det_array, detpos_array = self.getHeader(i)
-				self.meta[i, 3] = round(float(detpos_array[det_array.index('srcur')]),  5)
+				self.meta[i, 3] = round(float(detpos_array[det_array.index('srcur')]), 5)
 
 			if self.datatype == 'topotomo':
-				self.meta[i, 0] = round(float(motpos_array[mot_array.index('diffrx')]),  8)
-				self.meta[i, 1] = round(float(motpos_array[mot_array.index('diffrz')]),  8)
+				self.meta[i, 0] = round(float(motpos_array[mot_array.index('diffrx')]), 8)
+				self.meta[i, 1] = round(float(motpos_array[mot_array.index('diffrz')]), 8)
 				self.meta[i, 2] = float(self.data_files[i][-8:-4])
 
 			if self.datatype == 'strain_eta':
-				theta = (11.006-10.986)/40
-				self.meta[i, 0] = round(float(motpos_array[mot_array.index('obpitch')]),  8)
-				self.meta[i, 1] = round(10.986+theta*(float(self.data_files[i][-8:-4]))+theta/2, 8)
+				theta = (11.006 - 10.986) / 40
+				self.meta[i, 0] = round(float(motpos_array[mot_array.index('obpitch')]), 8)
+				self.meta[i, 1] = round(
+					10.986 + theta *
+					(float(self.data_files[i][-8:-4])) +
+					theta / 2, 8)
 				self.meta[i, 2] = float(self.data_files[i][-8:-4])
 
 			if self.datatype == 'strain_tt':
-				self.meta[i, 0] = round(float(motpos_array[mot_array.index('obyaw')]),  8)
-				self.meta[i, 1] = round(float(motpos_array[mot_array.index('diffrz')]),  8)
-				self.meta[i, 2] = round(float(motpos_array[mot_array.index('diffrx')]),  8)
+				self.meta[i, 0] = round(float(motpos_array[mot_array.index('obyaw')]), 8)
+				self.meta[i, 1] = round(float(motpos_array[mot_array.index('diffrz')]), 8)
+				self.meta[i, 2] = round(float(motpos_array[mot_array.index('diffrx')]), 8)
 
 			if self.datatype == 'mosaicity':
-				self.meta[i, 0] = round(float(motpos_array[mot_array.index('samry')]),  8)
-				self.meta[i, 1] = round(float(motpos_array[mot_array.index('samrz')]),  8)
-				self.meta[i, 2] = round(float(motpos_array[mot_array.index('diffrx')]),  8)
+				self.meta[i, 0] = round(float(motpos_array[mot_array.index('samry')]), 8)
+				self.meta[i, 1] = round(float(motpos_array[mot_array.index('samrz')]), 8)
+				self.meta[i, 2] = round(float(motpos_array[mot_array.index('diffrx')]), 8)
 
 	def makeMetaArrayNew(self):
-		self.meta = np.zeros((len(self.data_files),  4))
+		self.meta = np.zeros((len(self.data_files), 4))
 
 		if self.rank == 0:
 			print "Making meta array."
@@ -361,41 +385,44 @@ class GetEdfData(object):
 				mot_array, motpos_array, det_array, detpos_array, srcur = self.getHeader(i)
 			except ValueError:
 				mot_array, motpos_array, det_array, detpos_array = self.getHeader(i)
-				self.meta[i, 3] = round(float(self.fma[i][self.indexlist.index('srcur')]),  5)
+				self.meta[i, 3] = self.fma[i][self.indexlist.index('srcur')]
+
+			filenumber = float(self.data_files[i][-8:-4])
 
 			if self.datatype == 'topotomo':
-				self.meta[i, 0] = round(float(self.fma[i][self.indexlist.index('diffrx')]),  8)
-				self.meta[i, 1] = round(float(self.fma[i][self.indexlist.index('diffrz')]),  8)
-				self.meta[i, 2] = float(self.data_files[i][-8:-4])
+				self.meta[i, 0] = self.fma[i][self.indexlist.index('diffrx')]
+				self.meta[i, 1] = self.fma[i][self.indexlist.index('diffrz')]
+				self.meta[i, 2] = filenumber
 
 			if self.datatype == 'strain_eta':
-				theta = (11.006-10.986)/40
-				self.meta[i, 0] = round(float(self.fma[i][self.indexlist.index('obpitch')]),  8)
-				self.meta[i, 1] = round(10.986+theta*(float(self.data_files[i][-8:-4]))+theta/2, 8)
-				self.meta[i, 2] = float(self.data_files[i][-8:-4])
+				theta = (11.006 - 10.986) / 40
+				self.meta[i, 0] = self.fma[i][self.indexlist.index('obpitch')]
+				self.meta[i, 1] = 10.986 + theta * filenumber + theta / 2
+				self.meta[i, 2] = filenumber
 
 			if self.datatype == 'strain_tt':
-				self.meta[i, 0] = round(float(self.fma[i][self.indexlist.index('obyaw')]),  8)
-				self.meta[i, 1] = round(float(self.fma[i][self.indexlist.index('diffrz')]),  8)
-				self.meta[i, 2] = round(float(self.fma[i][self.indexlist.index('diffrx')]),  8)
+				self.meta[i, 0] = self.fma[i][self.indexlist.index('obyaw')]
+				self.meta[i, 1] = self.fma[i][self.indexlist.index('diffrz')]
+				self.meta[i, 2] = self.fma[i][self.indexlist.index('diffrx')]
 
 			if self.datatype == 'mosaicity':
-				self.meta[i, 0] = round(float(self.fma[i][self.indexlist.index('samry')]),  8)
-				self.meta[i, 1] = round(float(self.fma[i][self.indexlist.index('samrz')]),  8)
-				self.meta[i, 2] = round(float(self.fma[i][self.indexlist.index('diffrx')]),  8)
+				self.meta[i, 0] = self.fma[i][self.indexlist.index('samry')]
+				self.meta[i, 1] = self.fma[i][self.indexlist.index('samrz')]
+				self.meta[i, 2] = self.fma[i][self.indexlist.index('diffrx')]
 
 			if self.datatype == 'res_paper':
-				self.meta[i, 0] = round(float(self.fma[i][self.indexlist.index('samrz')]),  8)
-				self.meta[i, 1] = round(float(self.fma[i][self.indexlist.index('detx')]),  8)
-				self.meta[i, 2] = round(float(self.fma[i][self.indexlist.index('diffrz')]),  8)
-				self.meta[i, 3] = round(float(self.fma[i][self.indexlist.index('srcur')]),  8)
+				self.meta[i, 0] = self.fma[i][self.indexlist.index('samrz')]
+				self.meta[i, 1] = self.fma[i][self.indexlist.index('detx')]
+				self.meta[i, 2] = self.fma[i][self.indexlist.index('diffrz')]
+				self.meta[i, 3] = self.fma[i][self.indexlist.index('srcur')]
 
 			if self.datatype == 'ffdet_normalization':
-				self.meta[i, 0] = round(float(self.fma[i][self.indexlist.index('detx')]),  8)
-				self.meta[i, 1] = round(float(self.fma[i][self.indexlist.index('detz')]),  8)
-				self.meta[i, 2] = round(float(self.fma[i][self.indexlist.index('diffrz')]),  8)
-				self.meta[i, 3] = round(float(self.fma[i][self.indexlist.index('srcur')]),  8)
+				self.meta[i, 0] = self.fma[i][self.indexlist.index('detx')]
+				self.meta[i, 1] = self.fma[i][self.indexlist.index('detz')]
+				self.meta[i, 2] = self.fma[i][self.indexlist.index('diffrz')]
+				self.meta[i, 3] = self.fma[i][self.indexlist.index('srcur')]
 
+		self.meta = np.around(self.meta, decimals=8)
 
 	def getMetaData(self):
 		fullmetadatafile = 'tmp/datafullmeta_%s.npy' % self.dirhash
@@ -415,8 +442,7 @@ class GetEdfData(object):
 			self.makeMetaArrayNew()
 			np.savetxt(metadatafile, self.meta)
 			np.save(indexfile, self.indexlist)
-			np.save(fullmetadatafile,  self.fma)
-
+			np.save(fullmetadatafile, self.fma)
 
 		alphavals = sorted(list(set(self.meta[:, 0])))
 		betavals = sorted(list(set(self.meta[:, 1])))
@@ -431,35 +457,42 @@ class GetEdfData(object):
 		for i in range(len(gammavals)):
 			self.gammavals[i] = float(gammavals[i])
 
-		self.alpha0 = self.alphavals[len(self.alphavals)/2]
-		self.beta0 = self.betavals[len(self.betavals)/2]
-		self.gamma0 = self.gammavals[len(self.gammavals)/2]
+		self.alpha0 = self.alphavals[len(self.alphavals) / 2]
+		self.beta0 = self.betavals[len(self.betavals) / 2]
+		self.gamma0 = self.gammavals[len(self.gammavals) / 2]
 
 		if self.rank == 0:
 			print "Meta data from %s files read." % str(len(self.data_files))
 
-	def removeHotPixels(self,  data_new):
+	def removeHotPixels(self, data_new):
 		width = 15
-		hp = [[130,  784], [750,  1390]]
+		hp = [[130, 784], [750, 1390]]
 
 		for i in range(len(hp)):
-			if hp[i][0] <= len(data_new[:, 0])-width and hp[i][1] <= len(data_new[0, :])-width:
-				data_new[hp[i][1]-width:hp[i][1]+width, hp[i][0]-width:hp[i][0]+width] = 0
+			if hp[i][0] <= len(data_new[:, 0]) - width and hp[i][1] <= len(data_new[0, :]) - width:
+				data_new[
+					hp[i][1] - width:hp[i][1] + width,
+					hp[i][0] - width:hp[i][0] + width] = 0
 		return data_new
 
 	def rebin(self, a, bs):
-		shape = (a.shape[0]/bs, a.shape[1]/bs)
-		sh = shape[0], a.shape[0]//shape[0], shape[1], a.shape[1]//shape[1]
+		shape = (a.shape[0] / bs, a.shape[1] / bs)
+		sh = shape[0], a.shape[0] // shape[0], shape[1], a.shape[1] // shape[1]
 		return a.reshape(sh).sum(-1).sum(1)
 
 	def gaus(self, x, a, x0, sigma):
-		return a*np.exp(-(x-x0)**2/(2*sigma**2))
+		return a * np.exp(-(x - x0)**2 / (2 * sigma**2))
 
 	def fitGaussian(self, x, y):
 		from scipy.optimize import curve_fit
 
 		try:
-			popt, pcov = curve_fit(self.gaus, x, y, p0=[max(y), x[np.argmax(y)], -3.E-3], maxfev=100000)
+			popt, pcov = curve_fit(
+				self.gaus,
+				x,
+				y,
+				p0=[max(y), x[np.argmax(y)], -3.E-3],
+				maxfev=100000)
 			return popt, pcov
 		except RuntimeError:
 			print "Error - curve_fit failed"
@@ -499,9 +532,11 @@ class GetEdfData(object):
 
 			if full:
 				# print np.shape(self.bg_combined_full)
-				im = img.GetData(0).astype(np.int64)-self.bg_combined_full
+				im = img.GetData(0).astype(np.int64) - self.bg_combined_full
 			else:
-				im = img.GetData(0).astype(np.int64)[roi[2]:roi[3], roi[0]:roi[1]]-self.bg_combined
+				im = img.GetData(0).astype(np.int64)[
+					roi[2]:roi[3],
+					roi[0]:roi[1]] - self.bg_combined
 				# im = img.GetData(0).astype(np.int64)[roi[2]:roi[3], roi[0]:roi[1]]
 				# print np.shape(im)
 			# np.save(tmpfile,im)
@@ -514,7 +549,7 @@ class GetEdfData(object):
 		return im
 
 	def cleanImage(self, img):
-		# img = self.rfilter(img, 18, 3)
+		img = self.rfilter(img, 18, 3)
 		img[img < 0] = 0
 
 		return img
@@ -528,7 +563,7 @@ class GetEdfData(object):
 	def rfilter(self, img, nstp, slen):
 		start = time.time()
 		mask = np.ones(np.shape(img))
-		stp = 180./nstp
+		stp = 180. / nstp
 
 		stack = np.zeros((len(img[:, 0]), len(img[0, :]), nstp))
 
@@ -539,19 +574,23 @@ class GetEdfData(object):
 			return ret / n
 
 		for n in xrange(nstp):
-			rot = n*stp
+			rot = n * stp
 			imgr = scipy.ndimage.interpolation.rotate(img, rot)
 			mskr = scipy.ndimage.interpolation.rotate(mask, rot)
 
-			for j, xvals in enumerate(mskr[:,0]):  # range(len(mskr[:, 0])):
+			for j, xvals in enumerate(mskr[:, 0]):  # range(len(mskr[:, 0])):
 				ids = np.nonzero(mskr[j, :])
 				if ids[0].any():
 					imgr[j, ids[0]] = smooth(imgr[j, ids[0]], slen)
 
 			imgb = scipy.ndimage.interpolation.rotate(imgr, -rot)
 
-			idx0 = [np.floor((len(imgb[:, 0])-len(img[:, 0]))/2), np.floor((len(imgb[0, :])-len(img[0, :]))/2)]
-			idx1 = [np.floor((len(imgb[:, 0])+len(img[:, 0]))/2), np.floor((len(imgb[0, :])+len(img[0, :]))/2)]
+			idx0 = [
+				np.floor((len(imgb[:, 0]) - len(img[:, 0])) / 2),
+				np.floor((len(imgb[0, :]) - len(img[0, :])) / 2)]
+			idx1 = [
+				np.floor((len(imgb[:, 0]) + len(img[:, 0])) / 2),
+				np.floor((len(imgb[0, :]) + len(img[0, :])) / 2)]
 
 			with warnings.catch_warnings():
 				warnings.simplefilter("ignore")
@@ -559,12 +598,12 @@ class GetEdfData(object):
 
 			stack[:, :, n] = imgb
 		end = time.time()
-		print "Time: ", end-start
+		print "Rfilter took:", end - start, "seconds for an array."
 		return np.amin(stack, 2)
 
 	def printMeta(self):
-		print "Alpha values:\n",  self.alphavals
-		print "Beta values:\n",  self.betavals
+		print "Alpha values:\n", self.alphavals
+		print "Beta values:\n", self.betavals
 
 	def getMetaValues(self):
 		return self.alphavals, self.betavals, self.gammavals
@@ -576,22 +615,23 @@ class GetEdfData(object):
 		return self.bg_combined
 
 	def makeMultiColor(self, data, data2):
-		img = np.zeros((len(data[:, 0]), len(data[0, :]), 4),  dtype=np.uint8)
+		img = np.zeros((len(data[:, 0]), len(data[0, :]), 4), dtype=np.uint8)
 		img[:, :, 3] = 255
-		img[:, :, 1] = 255*data/np.max(data)
-		img[:, :, 2] = 255*data2/np.max(data2)
-		img[:, :, 0] = 255*data2/np.max(data2)
+		img[:, :, 1] = 255 * data / np.max(data)
+		img[:, :, 2] = 255 * data2 / np.max(data2)
+		img[:, :, 0] = 255 * data2 / np.max(data2)
 		return img
 
 	def makeImgArray(self, index, xpos, savefilename):
 		img = self.getImage(index[0], False)
 		# npix = len(img[:, 0])*len(img[0, :])
-		self.imgarray = np.zeros((len(index), len(img[:, 0]), len(img[0, :])))
+		imgarray = np.zeros((len(index), len(img[:, 0]), len(img[0, :])))
 
 		def addToArray(index_part):
 			imgarray_part = np.zeros((len(index_part), len(img[:, 0]), len(img[0, :])))
 			for i in range(len(index_part)):
 				print "Adding image " + str(i) + " to array. (rank " + str(self.rank) + ').'
+
 				imgarray_part[i, :, :] = self.getImage(index_part[i], False)
 
 			imgarray_part[0, 0, 0] = self.rank
@@ -599,10 +639,11 @@ class GetEdfData(object):
 			return imgarray_part
 
 		# Chose part of data set for a specific CPU (rank).
-		local_n = len(index)/self.size
-		istart = self.rank*local_n
-		istop = (self.rank+1)*local_n
+		local_n = len(index) / self.size
+		istart = self.rank * local_n
+		istop = (self.rank + 1) * local_n
 		index_part = index[istart:istop]
+		print local_n, self.rank, istart, istop
 		# local_data = alldata[:, :, istart:istop]
 
 		# Calculate strain on part of data set.
@@ -618,20 +659,24 @@ class GetEdfData(object):
 
 			datarank = imgarray_part[0, 0, 0]
 			imgarray_part[0, 0, 0] = 0
-			self.imgarray[istart:istop, :, :] = imgarray_part
-			for i in range(1,  self.size):
-				self.comm.Recv(recv_buffer,  MPI.ANY_SOURCE)
+			imgarray[istart:istop, :, :] = imgarray_part
+			for i in range(1, self.size):
+				self.comm.Recv(recv_buffer, MPI.ANY_SOURCE)
 				datarank = int(recv_buffer[0, 0, 0])
 				recv_buffer[0, 0, 0] = 0
-				self.imgarray[datarank*local_n:(datarank+1)*local_n, :, :] = recv_buffer
+				imgarray[
+					datarank * local_n:(datarank + 1) * local_n, :, :] = recv_buffer
 
-			for i in range(self.size-1):
-				self.comm.Send(self.imgarray, dest=(i+1))
+			#for i in range(self.size - 1):
+			#	self.comm.Send(self.imgarray, dest=(i + 1))
+
+			return imgarray
+
 
 		else:
 			# all other process send their result
 			self.comm.Send(imgarray_part, dest=0)
-			self.comm.Recv(self.imgarray, MPI.ANY_SOURCE)
+			# self.comm.Recv(self.imgarray, MPI.ANY_SOURCE)
 
 	# def makeMeanGrid(self):
 	# 	tt_vals = sorted(list(set(self.meta[:, 0])))
@@ -648,7 +693,7 @@ class GetEdfData(object):
 	# 		tt_step_size = 1
 	# 		tt_vals_max = min(tt_vals)+1
 	#
-	# 	t2t_grid_x,  t2t_grid_y = np.ogrid[min(theta_vals):theta_vals_max:theta_step_size, min(tt_vals):tt_vals_max:tt_step_size]
+	# 	t2t_grid_x, t2t_grid_y = np.ogrid[min(theta_vals):theta_vals_max:theta_step_size, min(tt_vals):tt_vals_max:tt_step_size]
 	#
 	# 	hist = np.zeros((len(tt_vals), len(theta_vals)))
 	# 	mean = self.getMean()
@@ -660,7 +705,7 @@ class GetEdfData(object):
 	#
 	# 		# = pixval
 	#
-	# 	return hist,  t2t_grid_x,  t2t_grid_y
+	# 	return hist, t2t_grid_x, t2t_grid_y
 	#
 	# def makeHistogram(self, hist, alpha, beta, savefilename):
 	# 	import matplotlib.pylab as plt
@@ -671,9 +716,9 @@ class GetEdfData(object):
 	# 	if len(hist[0, 0, :]) == 1:
 	# 		fig, ax = plt.subplots(ncols=len(hist[0, 0, :]), figsize=(6 * len(hist[0, 0, :]), 6))
 	# 		ax.pcolor(hist[:, :, 0], norm=matplotlib.colors.LogNorm(), cmap='Greens')
-	# 		ax.set_xticks(np.arange(hist[:, :, 0].shape[1])+0.5,  minor=False)
+	# 		ax.set_xticks(np.arange(hist[:, :, 0].shape[1])+0.5, minor=False)
 	# 		ax.set_xticklabels(beta, rotation=70)
-	# 		ax.set_yticks(np.arange(hist[:, :, 0].shape[0])+0.5,  minor=False)
+	# 		ax.set_yticks(np.arange(hist[:, :, 0].shape[0])+0.5, minor=False)
 	# 		ax.set_yticklabels(alpha)
 	# 		ax.set_xlabel('Theta')
 	# 		if self.datatype == 'strain_tt':
@@ -689,9 +734,9 @@ class GetEdfData(object):
 	# 		fig, ax = plt.subplots(ncols=len(hist[0, 0, :]), figsize=(6 * len(hist[0, 0, :]), 6))
 	# 		for i in range(len(hist[0, 0, :])):
 	# 			ax[i].pcolor(hist[:, :, i], norm=matplotlib.colors.LogNorm(), cmap='Greens')
-	# 			ax[i].set_xticks(np.arange(hist[:, :, i].shape[1])+0.5,  minor=False)
+	# 			ax[i].set_xticks(np.arange(hist[:, :, i].shape[1])+0.5, minor=False)
 	# 			ax[i].set_xticklabels(beta, rotation=70)
-	# 			ax[i].set_yticks(np.arange(hist[:, :, i].shape[0])+0.5,  minor=False)
+	# 			ax[i].set_yticks(np.arange(hist[:, :, i].shape[0])+0.5, minor=False)
 	# 			ax[i].set_yticklabels(alpha)
 	# 			ax[i].set_xlabel('Theta')
 	# 			if self.datatype == 'strain_tt':
@@ -744,7 +789,7 @@ class GetEdfData(object):
 	#
 	# 			if self.rank == 0:
 	# 				x = int(len(img1[0, :])*xpos)
-	# 				ta = np.ones((len(img1[:, 0]), len(img1[0, :]), 4),  dtype=np.uint8)*0
+	# 				ta = np.ones((len(img1[:, 0]), len(img1[0, :]), 4), dtype=np.uint8)*0
 	#
 	# 				ta[:, :, 3] = 255
 	# 				# ta[:, :, 0] = 255*img1/np.max(img1)
@@ -770,7 +815,7 @@ class GetEdfData(object):
 	# 			img1 = self.rebin(img1, bins)
 	# 			img2 = self.rebin(img2, bins)
 	# 			x = int(len(img1[0, :])*xpos)
-	# 			ta = np.ones((len(img1[:, 0]), len(img1[0, :]), 4),  dtype=np.uint8)*0
+	# 			ta = np.ones((len(img1[:, 0]), len(img1[0, :]), 4), dtype=np.uint8)*0
 	#
 	# 			ta[:, :, 3] = 255
 	# 			ta[:, :, 0] = 255*img1/np.max(img1)
@@ -799,7 +844,7 @@ class GetEdfData(object):
 	# 	# 		# labels = [item.get_text() for item in axarr.get_xticklabels()]
 	# 	# 		# axarr[1, i].set_xticklabels(labels, rotation=70)
 	#
-	# 	# fig,  ax = plt.subplots(figsize=(8, 8))
+	# 	# fig, ax = plt.subplots(figsize=(8, 8))
 	# 	# ax.get_xaxis().get_major_formatter().set_useOffset(False)
 	# 	# off = diff/2
 	# 	# off = off[:-1]
@@ -807,12 +852,12 @@ class GetEdfData(object):
 	# 	# x1 = 10.992 - self.meta[index[:, 0], 1]
 	# 	# x1 = x1[:-1]
 	# 	# x = np.append(-x1, x1[::-1])
-	# 	# print x,  offall
+	# 	# print x, offall
 	# 	# # x = 10.99 - self.meta[index[:, 0], 1]
 	# 	# ax.set_ylabel('Lattice rotation [degrees]')
 	# 	# ax.set_xlabel('Dislocation distance [um]')
 	# 	# # ax.set_xticks(offall)
-	# 	# ax.scatter(offall*0.08, x, s=50,  marker='o')
+	# 	# ax.scatter(offall*0.08, x, s=50, marker='o')
 	# 	plt.axis('tight')
 	# 	# plt.tight_layout()
 	# 	# if self.test == False:
@@ -825,8 +870,8 @@ class GetEdfData(object):
 	# 	# sns.set_context("paper")
 	#
 	# 	plt.figure(figsize=(20, 16))
-	# 	gs1 = matplotlib.gridspec.GridSpec(8,  8)
-	# 	gs1.update(wspace=0.025,  hspace=0.03)
+	# 	gs1 = matplotlib.gridspec.GridSpec(8, 8)
+	# 	gs1.update(wspace=0.025, hspace=0.03)
 	#
 	# 	if len(index[0, :]) == 1:
 	# 		for i in range(len(index[:, 0])):
@@ -836,7 +881,7 @@ class GetEdfData(object):
 	# 			img1 = self.rebin(img1, bins)
 	#
 	# 			x = int(len(img1[0, :])*xpos)
-	# 			ta = np.ones((len(img1[:, 0]), len(img1[0, :]), 4),  dtype=np.uint8)*0
+	# 			ta = np.ones((len(img1[:, 0]), len(img1[0, :]), 4), dtype=np.uint8)*0
 	#
 	# 			ta[:, :, 3] = 255
 	# 			ta[:, :, 1] = img1
@@ -863,7 +908,7 @@ class GetEdfData(object):
 	# 			img1 = self.rebin(img1, bins)
 	# 			img2 = self.rebin(img2, bins)
 	# 			x = int(len(img1[0, :])*xpos)
-	# 			ta = np.ones((len(img1[:, 0]), len(img1[0, :]), 4),  dtype=np.uint8)*0
+	# 			ta = np.ones((len(img1[:, 0]), len(img1[0, :]), 4), dtype=np.uint8)*0
 	#
 	# 			ta[:, :, 3] = 255
 	# 			ta[:, :, 0] = 255*img1/np.max(img1)
@@ -911,11 +956,11 @@ class GetEdfData(object):
 	#
 	# 	index = self.getIndex(float(self.alphavals[i1]), float(self.betavals[i2]))
 	# 	img = self.getImage(index[0], True)
-	# 	pic = np.zeros((len(img[:, 0]), len(img[0, :]), 4),  dtype=np.uint8)
+	# 	pic = np.zeros((len(img[:, 0]), len(img[0, :]), 4), dtype=np.uint8)
 	# 	pic[:, :, 3] = 255
 	# 	pic[:, :, 1] = 255*img/np.max(img)
 	#
-	# 	fig,  ax = plt.subplots(figsize=(8, 8))
+	# 	fig, ax = plt.subplots(figsize=(8, 8))
 	# 	ax.plot([self.roi[0], self.roi[0]], [self.roi[2], self.roi[3]], color='magenta')
 	# 	ax.plot([self.roi[1], self.roi[1]], [self.roi[2], self.roi[3]], color='magenta')
 	# 	ax.plot([self.roi[0], self.roi[1]], [self.roi[2], self.roi[2]], color='magenta')
@@ -929,8 +974,8 @@ class GetEdfData(object):
 	#
 	# def getProjection(self, data, x0, y0, x1, y1):
 	# 	num = 500
-	# 	x,  y = np.linspace(x0,  x1,  num),  np.linspace(y0,  y1,  num)
-	# 	zi = scipy.ndimage.map_coordinates(np.transpose(data),  np.vstack((x, y)))
+	# 	x, y = np.linspace(x0, x1, num), np.linspace(y0, y1, num)
+	# 	zi = scipy.ndimage.map_coordinates(np.transpose(data), np.vstack((x, y)))
 	# 	length = math.sqrt((x1-x0)**2+(y1-y0)**2)
 	# 	return zi, length
 	#
@@ -976,9 +1021,9 @@ class GetEdfData(object):
 	# 		datarank = strainpic_part[0, 0]
 	# 		strainpic_part[0, 0] = 0
 	# 		strainpic[:, istart:istop] = strainpic_part
-	# 		for i in range(1,  self.size):
+	# 		for i in range(1, self.size):
 	# 			try:
-	# 				self.comm.Recv(recv_buffer,  MPI.ANY_SOURCE)
+	# 				self.comm.Recv(recv_buffer, MPI.ANY_SOURCE)
 	# 				datarank = int(recv_buffer[0, 0])
 	# 				recv_buffer[0, 0] = 0
 	# 				strainpic[:, datarank*local_n:(datarank+1)*local_n] = recv_buffer
@@ -1046,8 +1091,8 @@ class GetEdfData(object):
 	# 		datarank = gaussarray_part[0, 0]
 	# 		gaussarray_part[0, 0] = 0
 	# 		gaussarray[:, istart:istop, :] = gaussarray_part
-	# 		for i in range(1,  self.size):
-	# 			self.comm.Recv(recv_buffer,  MPI.ANY_SOURCE)
+	# 		for i in range(1, self.size):
+	# 			self.comm.Recv(recv_buffer, MPI.ANY_SOURCE)
 	# 			datarank = recv_buffer[0][0, 0, 0]
 	# 			recv_buffer[0][0, 0, 0] = recv_buffer[0][0, 1, 0]
 	# 			recv_buffer[0][0, 0, 1] = recv_buffer[0][0, 1, 1]
@@ -1083,15 +1128,15 @@ class GetEdfData(object):
 	# 	axppos[1].set_title('FWHM')
 	# 	axppos[2].set_title('PPOS')
 	#
-	# 	def fmt(x,  pos):
-	# 		a,  b = '{:.2e}'.format(x).split('e')
+	# 	def fmt(x, pos):
+	# 		a, b = '{:.2e}'.format(x).split('e')
 	# 		b = int(b)
-	# 		return r'${} \times 10^{{{}}}$'.format(a,  b)
+	# 		return r'${} \times 10^{{{}}}$'.format(a, b)
 	#
 	# 	figstrain.subplots_adjust(right=0.8)
-	# 	cbar_ax0 = figstrain.add_axes([0.85,  0.65,  0.02,  0.2])
-	# 	cbar_ax1 = figstrain.add_axes([0.85,  0.4,  0.02,  0.2])
-	# 	cbar_ax2 = figstrain.add_axes([0.85,  0.1,  0.02,  0.2])
+	# 	cbar_ax0 = figstrain.add_axes([0.85, 0.65, 0.02, 0.2])
+	# 	cbar_ax1 = figstrain.add_axes([0.85, 0.4, 0.02, 0.2])
+	# 	cbar_ax2 = figstrain.add_axes([0.85, 0.1, 0.02, 0.2])
 	# 	figstrain.colorbar(im0, cax=cbar_ax0)  # , format=ticker.FuncFormatter(fmt))
 	# 	clb1 = figstrain.colorbar(im1, cax=cbar_ax1)  # , format=ticker.FuncFormatter(fmt))
 	# 	clb2 = figstrain.colorbar(im2, cax=cbar_ax2)  # , format=ticker.FuncFormatter(fmt))
@@ -1123,7 +1168,7 @@ class GetEdfData(object):
 	# 	return figstrain, axppos
 	#
 	# def plotStrainHeatmap(self, alldata):
-	# 	img = np.zeros((len(alldata[0, :, 0]), len(alldata[0, 0, :]), 4),  dtype=np.uint8)
+	# 	img = np.zeros((len(alldata[0, :, 0]), len(alldata[0, 0, :]), 4), dtype=np.uint8)
 	#
 	# 	# for i in range(len(alldata[:, 0, 0])/2+1):
 	# 	# 	rawdata = alldata[i, :, :]
@@ -1159,17 +1204,19 @@ class GetEdfData(object):
 	# 	ax.imshow(img)
 
 	def adjustGradient(self):
-		xpix = (self.roi[3]-self.roi[2])
-		ypix = (self.roi[1]-self.roi[0])
-		length = int(math.sqrt(2*ypix**2))
+		xpix = (self.roi[3] - self.roi[2])
+		ypix = (self.roi[1] - self.roi[0])
+		length = int(math.sqrt(2 * ypix**2))
 		gradient = np.ones((length, length))
 		for i in range(length):
-			gradient[i, :] *= -0.0001 + 2*i*0.0001/length
+			gradient[i, :] *= -0.0001 + 2 * i * 0.0001 / length
 
 		gradient = scipy.ndimage.interpolation.rotate(gradient, 125)
 		# im2 = axstrain[1].imshow(gradient)
 		l = len(gradient)
-		gradient = gradient[l/2-xpix/2:l/2+xpix/2, l/2-ypix/2:l/2+ypix/2]
+		gradient = gradient[
+			l / 2 - xpix / 2:l / 2 + xpix / 2,
+			l / 2 - ypix / 2:l / 2 + ypix / 2]
 		return gradient
 
 	# def plotStrain(self, strainpic):
@@ -1189,14 +1236,14 @@ class GetEdfData(object):
 	# 	axstrain[0].set_title("%g %g %g %g" % (self.roi[0], self.roi[1], self.roi[2], self.roi[3]))
 	# 	axstrain[0].set_title(r'$\epsilon_{220}$')
 	#
-	# 	def fmt(x,  pos):
-	# 		a,  b = '{:.2e}'.format(x).split('e')
+	# 	def fmt(x, pos):
+	# 		a, b = '{:.2e}'.format(x).split('e')
 	# 		b = int(b)
-	# 		return r'${} \times 10^{{{}}}$'.format(a,  b)
+	# 		return r'${} \times 10^{{{}}}$'.format(a, b)
 	#
 	# 	figstrain.subplots_adjust(right=0.8)
-	# 	cbar_ax1 = figstrain.add_axes([0.85,  0.55,  0.02,  0.35])
-	# 	cbar_ax2 = figstrain.add_axes([0.85,  0.1,  0.02,  0.35])
+	# 	cbar_ax1 = figstrain.add_axes([0.85, 0.55, 0.02, 0.35])
+	# 	cbar_ax2 = figstrain.add_axes([0.85, 0.1, 0.02, 0.35])
 	# 	clb = figstrain.colorbar(im, cax=cbar_ax1)  # , format=ticker.FuncFormatter(fmt))
 	# 	figstrain.colorbar(im2, cax=cbar_ax2)
 	#
@@ -1221,7 +1268,7 @@ class GetEdfData(object):
 	# 		strain = np.reshape(strainpic, len(strainpic[:, 0])*len(strainpic[0, :]))
 	# 		# strain[strain<-0.0005] = 0
 	# 		# strain[strain>0.0005] = 0
-	# 		# sns.distplot(strain, kde=False,  rug=False)
+	# 		# sns.distplot(strain, kde=False, rug=False)
 	# 		ax4.set_xlim(np.min(strain)-abs(0.1*np.min(strain)), np.max(strain)+0.1*np.max(strain))
 	# 		# ax4.set_xlim(-0.0004,0.0004)
 	# 		ax4.set_xlabel(r'$\theta$ offset [$^o$]')

@@ -17,6 +17,8 @@ os.system('rsync -avz /Users/andcj/PD_scripts/*.py andcj@panda2.fysik.dtu.dk:dfx
 os.system('rsync -avz /Users/andcj/PD_scripts/*.sh andcj@panda2.fysik.dtu.dk:dfxm/.')
 os.system('rsync -avz /Users/andcj/PD_scripts/lib andcj@panda2.fysik.dtu.dk:dfxm/.')
 os.system('rsync -avz /Users/andcj/PD_scripts/resolution_paper/*.py andcj@panda2.fysik.dtu.dk:dfxm/.')
+os.system('rsync -avz /Users/andcj/PD_scripts/reconstruct andcj@panda2.fysik.dtu.dk:dfxm/.')
+
 
 # os.system('ssh andcj@panda2.fysik.dtu.dk \"cd dfxm; mpiexec -n %s python %s\"' % (sys.argv[1], sys.argv[2]))
 

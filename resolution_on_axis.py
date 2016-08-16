@@ -32,8 +32,8 @@ if rank == 0:
 # for i in range(len(sys.argv)):
 # 	print i, sys.argv[i]
 
-path = '/data/hxrm/Resolution_march_2016/rollscan_big'
-bg_path = '/data/hxrm/Resolution_march_2016/rollscan_top_far'
+path = '/u/data/andcj/Resolution_march_2016/rollscan_big'
+bg_path = '/u/data/andcj/Resolution_march_2016/rollscan_top_far'
 
 filename = 'scan1_'
 bg_filename = 'scan1_0960.edf'
@@ -108,8 +108,6 @@ def getIntList(index_list):
 
 	srcur = meta[index_list, 3]
 	srcur_max = max(srcur)
-	print srcur
-	print srcur_max
 
 	with warnings.catch_warnings():
 		warnings.simplefilter("ignore")
@@ -135,15 +133,18 @@ def convertToDegrees(b):
 	# tt0 = 10.89*2
 	sample_det = 5720
 	b_degrees = []
-	for i in b:
-		b_degrees.append(math.degrees(math.tan(i/sample_det)))
+	for i, detx in enumerate(b):
+		b_degrees.append(math.degrees(math.atan(detx/sample_det)))
+		print i, detx, math.degrees(math.atan(detx/sample_det))
 	return b_degrees
 
 index_list_tt = makeIndexList_TT(a, b, c)
 
 index_list_roll = makeIndexList_ROLL(a, b, c)
 
+
 b_d = convertToDegrees(b)
+print b[len(b)/2], a[len(a)/2]
 
 # xr_common = b_d
 
@@ -162,9 +163,6 @@ fwhm_roll = 2*math.sqrt(2*math.log(2))*sigma_roll
 fig, ax = plt.subplots(figsize=(7,7))
 # fig2, ax2 = plt.subplots(figsize=(7,7))
 ax2 = ax.twiny()
-
-print np.shape(xr_tt)
-print np.shape(yr_tt)
 
 
 legend_tt = '2T Ampl:' + str(ampl_tt) + '\n 2T Midp:' + str(midp_tt) + '\n 2T FWHM:' + str(fwhm_tt)

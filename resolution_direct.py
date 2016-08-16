@@ -32,8 +32,8 @@ if rank == 0:
 # for i in range(len(sys.argv)):
 # 	print i, sys.argv[i]
 
-path = '/data/hxrm/Resolution_march_2016/rollscan_big'
-bg_path = '/data/hxrm/Resolution_march_2016/rollscan_top_far'
+path = '/u/data/andcj/Resolution_march_2016/rollscan_big'
+bg_path = '/u/data/andcj/Resolution_march_2016/rollscan_top_far'
 
 filename = 'scan1_'
 bg_filename = 'scan1_0960.edf'
@@ -43,9 +43,9 @@ datatype = 'res_paper'
 
 test_switch = True
 
-poi = [1134, 1024-500]
+poi = [1134, 1024]
 # size = [2, 20]
-size = [100, 100]
+size = [50, 50]
 
 pixelsize = 180.  # 180.
 

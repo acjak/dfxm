@@ -158,7 +158,7 @@ class DFXM(object):
 		from scipy.optimize import curve_fit
 
 		try:
-			popt, pcov = curve_fit(self.gaus, x, y, p0=[max(y), x[np.argmax(y)], .3], maxfev=10000)
+			popt, pcov = curve_fit(self.gaus, x, y, p0=[max(y), x[np.argmax(y)], -3.E-3], maxfev=10000)
 			return popt, pcov
 		except RuntimeError:
 			pass
@@ -471,20 +471,23 @@ class DFXM(object):
 		x,  y = np.linspace(x0,  x1,  num),  np.linspace(y0,  y1,  num)
 		zi = scipy.ndimage.map_coordinates(np.transpose(data),  np.vstack((x, y)))
 		length = math.sqrt((x1-x0)**2+(y1-y0)**2)
-		return zi
+		return zi, length
 
 	def strainRange(self, data_part, xr, beta0):
 		strainpic = np.zeros((np.shape(data_part[0, :, :])), dtype='float64')
 
-		for i in range(len(data_part[0, :, 0])):
-			if self.rank == 0 and 10*float(i)/len(data_part[0, :, 0]) % 1 == 0.0:
-				done = 100*(float(i)/len(data_part[0, :, 0]))
+		lenx = len(data_part[0, :, 0])
+		leny = len(data_part[0, 0, :])
+
+		for i in range(lenx):
+			if self.rank == 0 and 10*float(i)/lenx % 1 == 0.0:
+				done = 100*(float(i)/lenx)
 				print "Calculation is %g perc. complete..." % done
-			for j in range(len(data_part[0, 0, :])):
+			for j in range(leny):
 				try:
 					popt, pcov = self.fitGaussian(xr, data_part[:, i, j])
-					strain = popt[1]/(beta0)-0.00003
-					if strain >= -0.0001 and strain <= 0.0001:
+					strain = popt[1]/(beta0)  # -0.00003
+					if strain >= -0.001 and strain <= 0.001:
 						strainpic[i, j] = strain
 				except TypeError:
 					print i, j, "Gaussian could not be fitted."
@@ -875,21 +878,25 @@ class DFXM(object):
 		gradient = gradient[l/2-xpix/2:l/2+xpix/2, l/2-ypix/2:l/2+ypix/2]
 		return gradient
 
-	def plotStrain(self, strainpic, imgarray):
+	def plotStrain(self, strainpic, imgarray, label):
 		# import matplotlib.ticker as ticker
 		# sns.set_context("talk")
 
 		print "strainpic dimensions: " + str(np.shape(strainpic))
 
-		gradient = self.adjustGradient()
+		# gradient = self.adjustGradient()
 
 		figstrain, axstrain = plt.subplots(2, 1)
 
-		im = axstrain[0].imshow(strainpic, cmap="BrBG")
+		strainpic_adjusted = strainpic - np.mean(strainpic)
+		strainpic_adjusted[strainpic_adjusted > 0.00004] = 0.00004
+		strainpic_adjusted[strainpic_adjusted < -0.00004] = -0.00004
+
+		im = axstrain[0].imshow(strainpic_adjusted, cmap="BrBG")
 		# im = axstrain[0].imshow(strainpic+gradient, cmap="BrBG")
 		im2 = axstrain[1].imshow(imgarray[len(imgarray[:, 0, 0])/2-4, :, :], cmap="Greens")
 
-		axstrain[0].set_title("%g %g %g %g" % (self.roi[0], self.roi[1], self.roi[2], self.roi[3]))
+		axstrain[1].set_title("%g %g %g %g" % (self.roi[0], self.roi[1], self.roi[2], self.roi[3]))
 		axstrain[0].set_title(r'$\epsilon_{220}$')
 
 		def fmt(x,  pos):
@@ -903,33 +910,32 @@ class DFXM(object):
 		clb = figstrain.colorbar(im, cax=cbar_ax1)  # , format=ticker.FuncFormatter(fmt))
 		figstrain.colorbar(im2, cax=cbar_ax2)
 
-		linestart = [25, 80]
-		linestop = [25, 150]
+		linestart = [100, 50]
+		linestop = [100, 350]
 		clb.set_clim(-0.00004, 0.00004)
 		axstrain[0].autoscale(False)
 		axstrain[0].plot([linestart[0], linestop[0]], [linestart[1], linestop[1]])
 
-		z, length = self.getProjection(strainpic, linestart[0], linestart[1], linestop[0], linestop[1])
+		z, length = self.getProjection(strainpic, linestart[0], linestart[1], linestop[0], linestop[1], 500)
 		f3, ax3 = plt.subplots()
 		linerange = np.linspace(0, 90*length/1000, len(z))
 		ax3.plot(linerange, z)
 		ax3.set_ylabel(r'Strain [$\Delta\theta/\theta$]')
 		ax3.set_xlabel(r'[$\mu m$]')
 
-		if self.rank == 0:
-			np.save(self.directory + '/strainmap_array.txt', strainpic+gradient)
-			f3.savefig(self.directory + '/strainmap_line.pdf')
-			figstrain.savefig(self.directory + '/strainmap.pdf')
-			f4, ax4 = plt.subplots()
-			strain = np.reshape(strainpic, len(strainpic[:, 0])*len(strainpic[0, :]))
-			# strain[strain<-0.0005] = 0
-			# strain[strain>0.0005] = 0
-			# sns.distplot(strain, kde=False,  rug=False)
-			ax4.set_xlim(np.min(strain)-abs(0.1*np.min(strain)), np.max(strain)+0.1*np.max(strain))
-			# ax4.set_xlim(-0.0004,0.0004)
-			ax4.set_xlabel(r'$\theta$ offset [$^o$]')
-			ax4.set_title('Strain distribution')
-			f4.savefig(self.directory + '/straindistribution.pdf')
+		# np.save(self.directory + '/strainmap_array.txt', strainpic)
+		f3.savefig(self.directory + '/strainmap_line.pdf')
+		figstrain.savefig(self.directory + '/strainmap_%s.pdf' % str(label))
+		# f4, ax4 = plt.subplots()
+		# strain = np.reshape(strainpic, len(strainpic[:, 0])*len(strainpic[0, :]))
+		# # strain[strain<-0.0005] = 0
+		# # strain[strain>0.0005] = 0
+		# # sns.distplot(strain, kde=False,  rug=False)
+		# ax4.set_xlim(np.min(strain)-abs(0.1*np.min(strain)), np.max(strain)+0.1*np.max(strain))
+		# # ax4.set_xlim(-0.0004,0.0004)
+		# ax4.set_xlabel(r'$\theta$ offset [$^o$]')
+		# ax4.set_title('Strain distribution')
+		# f4.savefig(self.directory + '/straindistribution.pdf')
 		return figstrain, axstrain
 
 if __name__ == '__main__':

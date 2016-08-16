@@ -59,6 +59,11 @@ data2 = GetEdfData(path, filename2, bg_path, bg_filename, roi, datatype, test_sw
 data2.setTest(True)
 data2.adjustOffset(False)
 
+try:
+	directory = data.directory
+except AttributeError:
+	directory = 0
+tools = DFXM(path, data.data_files, directory, roi, datatype, data.dirhash, data.meta, test_switch)
 
 a, b, f = data.getMetaValues()
 c, d, g = data2.getMetaValues()

@@ -32,8 +32,8 @@ if rank == 0:
 # for i in range(len(sys.argv)):
 # 	print i, sys.argv[i]
 
-path = sys.argv[1]  # '/data/hxrm/Resolution_march_2016/rollscan_center'
-bg_path = '/data/hxrm/Resolution_march_2016/rollscan_top_far'
+path = sys.argv[1]  # '/u/data/andcj/Resolution_march_2016/rollscan_center'
+bg_path = '/u/data/andcj/Resolution_march_2016/rollscan_top_far'
 
 filename = 'scan1_'
 bg_filename = 'scan1_0960.edf'
