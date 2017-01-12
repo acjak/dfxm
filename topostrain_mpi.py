@@ -45,13 +45,13 @@ datatype = 'strain_tt'
 # poi = [500, 500]
 # size = [1000, 1000]
 
-poi = [250, 550]
-size = [400, 400]
+poi = [600, 770]
+size = [200, 200]
 
 
-diffrx_pos = 9
+diffrx_pos = 6
 
-test_switch = False  # True
+test_switch = True
 
 roi = [poi[0]-size[0]/2, poi[0]+size[0]/2, poi[1]-size[1]/2, poi[1]+size[1]/2]
 
@@ -92,7 +92,6 @@ def plotImageArray(diffrx_pos):
 	plt.savefig(data.directory + '/%s_%s_array.pdf' % ('topostrain', str(c[diffrx_pos])))
 
 
-
 def makeIndexList(a, b, c, diffrx_pos):
 	index_list = []
 
@@ -101,7 +100,7 @@ def makeIndexList(a, b, c, diffrx_pos):
 		index = data.getIndex(float(a[i]), float(b[i]), c[diffrx_pos])
 		index_list.append(index[0])
 
-	xr = b-data.beta0
+	xr = b - data.beta0
 
 	with warnings.catch_warnings():
 		warnings.simplefilter("ignore")

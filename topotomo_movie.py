@@ -6,14 +6,29 @@ from lib.getedfdata import *
 # from lib.gauss import *
 from lib.dfxm import *
 import numpy as np
+import itertools
+from mpi4py import MPI
 import matplotlib
 matplotlib.rc('font', family='DejaVu Sans')
 import matplotlib.pylab as plt
 # import seaborn as sns
 # import scipy.ndimage
-import itertools
+
 # import warnings
-from mpi4py import MPI
+
+
+def line(x, a, b):
+	return a * x + b
+
+
+def fitLine(x, y):
+	from scipy.optimize import curve_fit
+
+	try:
+		popt, pcov = curve_fit(line, x, y, p0=[0, 30], maxfev=10000)
+		return popt, pcov
+	except RuntimeError:
+		pass
 
 
 comm = MPI.COMM_WORLD
@@ -28,22 +43,23 @@ print rank, mpisize
 if rank == 0:
 	start = time.time()
 
-path = '/u/data/andcj/hxrm/Dislocation_november_2015/diamond/ff_topo_2'
-bg_path = '/u/data/andcj/hxrm/Dislocation_november_2015/diamond/bg_ff'
+path = '/u/data/andcj/hxrm/Dislocation_november_2015/diamond/nf_topo_2'
+bg_path = '/u/data/andcj/hxrm/Dislocation_november_2015/diamond/nf_topo_2'
+# bg_path = '/u/data/andcj/hxrm/Dislocation_november_2015/diamond/bg_ff'
 
-filename = 'ff1_'
-filename2 = 'ff2_'
+filename = 'nf2_'
+filename2 = 'nf3_'
 sampletitle = filename
-bg_filename = 'bg_ff_2x2_0p5s_'
+bg_filename = 'nf2_0001'
 
 datatype = 'topotomo'
 
 test_switch = True
 
 # poi = [500, 500]
-poi = [500, 500]
-size = [1000, 1000]
-s = 1000
+poi = [1000, 1000]
+size = [2000, 2000]
+s = 1500
 
 roi = [
 	poi[0] - size[0] / 2,
@@ -91,16 +107,17 @@ local_f = f[istart:istop]
 local_g = g[istart:istop]
 
 fig = plt.figure(frameon=False)
-# fig.set_size_inches(5, 5)
+# fig.set_size_inches(5, 10)
 # ax = plt.Axes(fig, [0., 0., 1., 1.])
-# ax.set_axis_off()
+#
 # fig.add_axes(ax)
 
 for (i, a) in enumerate(local_a):
 	print "Working on angle ", str(a), "."
-	fig.set_size_inches(11, 11)
+	fig.set_size_inches(10, 10)
+	fig.set_size_inches(size[0], size[1])
 	ax = plt.Axes(fig, [0., 0., 1., 1.])
-	ax.set_axis_off()
+	# ax.set_axis_off()
 	fig.add_axes(ax)
 
 	index = data.getIndex(a, -10000, -10000)
@@ -108,6 +125,25 @@ for (i, a) in enumerate(local_a):
 
 	index2 = data2.getIndex(a, -10000, -10000)
 	img1 = data2.getImage(index2[0], False)
+
+	imgsum1 = np.sum(img1, 1) / len(img1[0, :])
+	ran = np.array(range(len(imgsum1)))
+	popt, pcov = fitLine(ran, imgsum1)
+	fittedline1 = ran * popt[0] + popt[1]
+	fittedline1 = fittedline1 - fittedline1[len(fittedline1) / 2]
+	gradient1 = np.tile(fittedline1, (len(img1[:, 0]), 1)).transpose()
+	img1 -= gradient1
+
+	imgsum0 = np.sum(img0, 1) / len(img0[0, :])
+	ran = np.array(range(len(imgsum0)))
+	popt, pcov = fitLine(ran, imgsum0)
+	fittedline0 = ran * popt[0] + popt[1]
+	fittedline0 = fittedline0 - fittedline0[len(fittedline0) / 2]
+	gradient0 = np.tile(fittedline0, (len(img0[:, 0]), 1)).transpose()
+	img0 -= gradient0
+
+	img0[img0 < 0] = 0
+	img1[img1 < 0] = 0
 
 	ta = np.ones((len(img1[:, 0]), len(img1[0, :]), 4), dtype=np.uint8) * 0
 
@@ -122,23 +158,47 @@ for (i, a) in enumerate(local_a):
 		ta[:, :, 2] = 0
 		ta[:, :, 1] = 0
 
-	ax.imshow(ta, interpolation="none", cmap="Greens")
+	ax.imshow(ta, interpolation="none")
 	ax.autoscale(enable=False)
-	# ax.text(50, 50, str(local_c[i]), color='white')
-	ax.plot(
-		[s - 40 - 4 * 56, s - 40],
-		[s - 60, s - 60],
-		linewidth=10,
-		color='white')
+	# ax.text(50, 50, a, color='white')
+	# ax.plot(
+	# 	[s - 40 - 2 * 80, s - 40],
+	# 	[s - 55, s - 55],
+	# 	linewidth=3,
+	# 	color='white')
 
-	ax.text(s - 190, s - 25, u'20 μm', color='white', fontsize=20)
+	# ax.plot(
+	# 	[30, 30],
+	# 	[0, s],
+	# 	color='blue')
+
+	# ax.text(s - 180, s - 25, u'100 μm', color='white', fontsize=16)
+
+	ax.set_axis_off()
+	extent = ax.get_window_extent().transformed(
+		plt.gcf().dpi_scale_trans.inverted())
+
+	# fig1, ax1 = plt.subplots()
+	# ax1.plot(img0[300, :], color='Greens')
+	# ax1.plot(img1[300, :], color='Pink')
+	#
+	# fig1.savefig(
+	# 	data.directory +
+	# 	'/topo_im_' +
+	# 	str('%04d' % (i + rank * local_n)) +
+	# 	'.png')
 
 	fig.savefig(
 		data.directory +
 		'/topo_im_' +
 		str('%04d' % (i + rank * local_n)) +
-		'.png')
-	fig.clf()
+		'.png',
+		bbox_inches=extent,
+		dpi=1)
+	# pad_inches=0)
+
+	# if i == 1:
+	# 	break
 
 # if rank == 0:
 # 	end = time.time()

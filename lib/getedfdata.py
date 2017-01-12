@@ -497,6 +497,18 @@ class GetEdfData(object):
 		except RuntimeError:
 			print "Error - curve_fit failed"
 
+	def line(self, x, a, b):
+		return a * x + b
+
+	def fitLine(self, x, y):
+		from scipy.optimize import curve_fit
+
+		try:
+			popt, pcov = curve_fit(self.line, x, y, p0=[0, 30], maxfev=10000)
+			return popt, pcov
+		except RuntimeError:
+			pass
+
 	def getIndex(self, alpha, beta, gamma):
 		if alpha != -10000 and beta == -10000:
 			index = np.where(self.meta[:, 0] == alpha)
@@ -549,7 +561,7 @@ class GetEdfData(object):
 		return im
 
 	def cleanImage(self, img):
-		img = self.rfilter(img, 18, 3)
+		# img = self.rfilter(img, 18, 3)
 		img[img < 0] = 0
 
 		return img
@@ -625,14 +637,29 @@ class GetEdfData(object):
 	def makeImgArray(self, index, xpos, savefilename):
 		img = self.getImage(index[0], False)
 		# npix = len(img[:, 0])*len(img[0, :])
-		imgarray = np.zeros((len(index), len(img[:, 0]), len(img[0, :])))
+		self.imgarray = np.zeros((len(index), len(img[:, 0]), len(img[0, :])))
 
 		def addToArray(index_part):
 			imgarray_part = np.zeros((len(index_part), len(img[:, 0]), len(img[0, :])))
 			for i in range(len(index_part)):
 				print "Adding image " + str(i) + " to array. (rank " + str(self.rank) + ').'
 
-				imgarray_part[i, :, :] = self.getImage(index_part[i], False)
+				img0 = self.getImage(index_part[i], False)
+				imgsum = np.sum(img0, 1) / len(img0[0, :])
+
+				# return imgarray_part[i, :, :], imgsum
+				ran = np.array(range(len(imgsum)))
+
+				popt, pcov = self.fitLine(ran, imgsum)
+
+				fittedline = ran * popt[0] + popt[1]
+
+				fittedline = fittedline - fittedline[len(fittedline) / 2]
+				# imgsum2 = imgsum-fittedline
+
+				gradient = np.tile(fittedline, (len(img0[:, 0]), 1)).transpose()
+
+				imgarray_part[i, :, :] = img0 - gradient
 
 			imgarray_part[0, 0, 0] = self.rank
 
@@ -648,6 +675,9 @@ class GetEdfData(object):
 
 		# Calculate strain on part of data set.
 		imgarray_part = addToArray(index_part)
+		# imgarray_part, imgsum = addToArray(index_part)
+
+		# return imgarray_part, imgsum
 
 		# self.imgarray = addToArray(index)
 
@@ -659,24 +689,23 @@ class GetEdfData(object):
 
 			datarank = imgarray_part[0, 0, 0]
 			imgarray_part[0, 0, 0] = 0
-			imgarray[istart:istop, :, :] = imgarray_part
+			self.imgarray[istart:istop, :, :] = imgarray_part
 			for i in range(1, self.size):
 				self.comm.Recv(recv_buffer, MPI.ANY_SOURCE)
 				datarank = int(recv_buffer[0, 0, 0])
 				recv_buffer[0, 0, 0] = 0
-				imgarray[
+				self.imgarray[
 					datarank * local_n:(datarank + 1) * local_n, :, :] = recv_buffer
 
-			#for i in range(self.size - 1):
-			#	self.comm.Send(self.imgarray, dest=(i + 1))
+			for i in range(self.size - 1):
+				self.comm.Send(self.imgarray, dest=(i + 1))
 
-			return imgarray
-
+			# return imgarray
 
 		else:
 			# all other process send their result
 			self.comm.Send(imgarray_part, dest=0)
-			# self.comm.Recv(self.imgarray, MPI.ANY_SOURCE)
+			self.comm.Recv(self.imgarray, MPI.ANY_SOURCE)
 
 	# def makeMeanGrid(self):
 	# 	tt_vals = sorted(list(set(self.meta[:, 0])))
@@ -1298,7 +1327,11 @@ if __name__ == '__main__':
 	size = [600, 300]
 
 	# ROI calculated.
-	roi = [poi[0]-size[0]/2, poi[0]+size[0]/2, poi[1]-size[1]/2, poi[1]+size[1]/2]
+	roi = [
+		poi[0] - size[0] / 2,
+		poi[0] + size[0] / 2,
+		poi[1] - size[1] / 2,
+		poi[1] + size[1] / 2]
 
 	# Initialize the class as 'dfxm'.
 	dfxm = GetEdfData(path, filename, bg_filename, roi, datatype)

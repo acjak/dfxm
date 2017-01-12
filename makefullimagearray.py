@@ -46,7 +46,7 @@ datatype = 'topotomo'
 # size = [1000, 1000]
 
 poi = [512, 512]
-size = [10, 10]
+size = [200, 200]
 
 
 test_switch = True
@@ -68,6 +68,17 @@ except AttributeError:
 
 a, b, c = data.getMetaValues()
 # ab_vals = list(itertools.product(a, b))
+def line(x, a, b):
+	return a*x+b
+
+def fitLine(x, y):
+	from scipy.optimize import curve_fit
+
+	try:
+		popt, pcov = curve_fit(line, x, y, p0=[0, 30], maxfev=10000)
+		return popt, pcov
+	except RuntimeError:
+		pass
 
 def allFiles(a, b):
 	index_list = range(len(data.meta))
@@ -80,9 +91,11 @@ def allFiles(a, b):
 		np.save('/u/data/andcj/tmp/alpha.npy', a)
 		np.save('/u/data/andcj/tmp/beta.npy', b)
 		print np.shape(imgarray)
-		reshapedarray = np.reshape(imgarray,[181, 41, np.shape(imgarray)[1], np.shape(imgarray)[2]])
+		reshapedarray = np.reshape(imgarray,[41, 181, np.shape(imgarray)[1], np.shape(imgarray)[2]])
+
 		print np.shape(reshapedarray)
-		np.save('/u/data/andcj/tmp/largetest.npy', reshapedarray)
+		# reshapedarray[18:22,:,:,:] = 0
+		np.save('/u/data/andcj/tmp/largetest_200x200.npy', reshapedarray)
 
 if test_switch:
 	allFiles(a, b)

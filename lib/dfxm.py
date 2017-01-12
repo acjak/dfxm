@@ -43,7 +43,6 @@ import matplotlib
 matplotlib.use('Agg')
 import matplotlib.pylab as plt
 
-
 # import seaborn as sns
 from mpi4py import MPI
 
@@ -108,29 +107,29 @@ class DFXM(object):
 	def getROI(self):
 		return self.roi
 
-	def setROI(self,  roi):
+	def setROI(self, roi):
 		self.roi = roi
 
 	def makeROIAdjustmentArray(self):
-		self.adj_array = np.zeros((len(self.alphavals),  4))
+		self.adj_array = np.zeros((len(self.alphavals), 4))
 		for i in range(len(self.alphavals)):
-			offset = (i-10)*2
-			self.adj_array[i,  0] = self.roi[0]
-			self.adj_array[i,  1] = self.roi[1]
-			self.adj_array[i,  2] = self.roi[2]+offset
-			self.adj_array[i,  3] = self.roi[3]+offset
+			offset = (i - 10) * 2
+			self.adj_array[i, 0] = self.roi[0]
+			self.adj_array[i, 1] = self.roi[1]
+			self.adj_array[i, 2] = self.roi[2] + offset
+			self.adj_array[i, 3] = self.roi[3] + offset
 
-	def adjustROI(self,  xoff,  yoff):
+	def adjustROI(self, xoff, yoff):
 		for i in range(len(self.alphavals)):
-			self.adj_array[i,  0] = self.adj_array[i,  0]+xoff
-			self.adj_array[i,  1] = self.adj_array[i,  1]+xoff
-			self.adj_array[i,  2] = self.adj_array[i,  2]+yoff
-			self.adj_array[i,  3] = self.adj_array[i,  3]+yoff
+			self.adj_array[i, 0] = self.adj_array[i, 0] + xoff
+			self.adj_array[i, 1] = self.adj_array[i, 1] + xoff
+			self.adj_array[i, 2] = self.adj_array[i, 2] + yoff
+			self.adj_array[i, 3] = self.adj_array[i, 3] + yoff
 
-	def getMeanData(self):
+	def getMeanData(self, bg_combined):
 		meandatafile = 'output/datamean_%s.txt' % self.dirhash
 
-		if os.path.isfile(meandatafile) == True:
+		if os.path.isfile(meandatafile):
 			self.data_mean = np.loadtxt(meandatafile)
 		else:
 			self.data_mean = np.zeros((len(self.meta[:, 0])))
@@ -139,20 +138,25 @@ class DFXM(object):
 			for i in range(len(self.data_files)):
 				file_with_path = self.path + '/' + self.data_files[i]
 				img = EdfFile.EdfFile(file_with_path)
-				self.data_mean[i] = img.GetData(0).astype(np.int64)[self.roi[2]:self.roi[3],  self.roi[0]:self.roi[1]].mean()-self.bg_combined.mean()
-			np.savetxt(meandatafile,  self.data_mean)
+				im = img.GetData(0).astype(np.int64)[
+					self.roi[2]:self.roi[3],
+					self.roi[0]:self.roi[1]] - bg_combined
+				im[im < 0] = 0
+				self.data_mean[i] = im.mean()
+
+			np.savetxt(meandatafile, self.data_mean)
 
 	def getMean(self):
 		self.getMeanData()
 		return self.data_mean
 
 	def rebin(self, a, bs):
-		shape = (a.shape[0]/bs, a.shape[1]/bs)
-		sh = shape[0], a.shape[0]//shape[0], shape[1], a.shape[1]//shape[1]
+		shape = (a.shape[0] / bs, a.shape[1] / bs)
+		sh = shape[0], a.shape[0] // shape[0], shape[1], a.shape[1] // shape[1]
 		return a.reshape(sh).sum(-1).sum(1)
 
 	def gaus(self, x, a, x0, sigma):
-		return a*np.exp(-(x-x0)**2/(2*sigma**2))
+		return a * np.exp(-(x - x0)**2 / (2 * sigma**2))
 
 	def fitGaussian(self, x, y):
 		from scipy.optimize import curve_fit
@@ -165,51 +169,58 @@ class DFXM(object):
 		# 	print "Error - curve_fit failed"
 
 	def makeMultiColor(self, data, data2):
-		img = np.zeros((len(data[:, 0]), len(data[0, :]), 4),  dtype=np.uint8)
+		img = np.zeros((len(data[:, 0]), len(data[0, :]), 4), dtype=np.uint8)
 		img[:, :, 3] = 255
-		img[:, :, 1] = 255*data/np.max(data)
-		img[:, :, 2] = 255*data2/np.max(data2)
-		img[:, :, 0] = 255*data2/np.max(data2)
+		img[:, :, 1] = 255 * data / np.max(data)
+		img[:, :, 2] = 255 * data2 / np.max(data2)
+		img[:, :, 0] = 255 * data2 / np.max(data2)
 		return img
 
-	def makeMeanGrid(self, mean):
-		tt_vals = sorted(list(set(self.meta[:, 0])))
-		theta_vals = sorted(list(set(self.meta[:, 1])))
-		tt_step_size = (max(tt_vals)-min(tt_vals))/len(tt_vals)
-		theta_step_size = (max(theta_vals)-min(theta_vals))/len(theta_vals)
+	def makeMeanGrid(self, mean, a, b, omega):
+		tt_vals = a.tolist()  # sorted(list(set(self.meta[np.where(self.meta[:, 2] == omega)[0], 0])))
+		theta_vals = b.tolist()  # sorted(list(set(self.meta[np.where(self.meta[:, 2] == omega)[0], 1])))
+		tt_step_size = (max(tt_vals) - min(tt_vals)) / len(tt_vals)
+		theta_step_size = (max(theta_vals) - min(theta_vals)) / len(theta_vals)
 		tt_vals_max = max(tt_vals)
 		theta_vals_max = max(theta_vals)
 
 		if theta_step_size == 0:
 			theta_step_size = 1
-			theta_vals_max = min(theta_vals)+1
+			theta_vals_max = min(theta_vals) + 1
 		if tt_step_size == 0:
 			tt_step_size = 1
-			tt_vals_max = min(tt_vals)+1
+			tt_vals_max = min(tt_vals) + 1
 
-		t2t_grid_x,  t2t_grid_y = np.ogrid[min(theta_vals):theta_vals_max:theta_step_size, min(tt_vals):tt_vals_max:tt_step_size]
+		t2t_grid_x, t2t_grid_y = np.ogrid[min(theta_vals):theta_vals_max:theta_step_size, min(tt_vals):tt_vals_max:tt_step_size]
 
 		hist = np.zeros((len(tt_vals), len(theta_vals)))
 		# mean = self.getMean()
 		for i in range(len(self.meta[:, 0])):
-			# img = self.getImage(i, False)
-			# pixval = img[500, 500]
-			# if self.meta[i,2] == self.gammavals[20]:
-			hist[tt_vals.index(self.meta[i, 0]), theta_vals.index(self.meta[i, 1])] += mean[i]
+			if self.meta[i, 2] == omega:
+				# img = self.getImage(i, False)
+				# pixval = img[500, 500]
+				# if self.meta[i,2] == self.gammavals[20]:
+				hist[tt_vals.index(self.meta[i, 0]), theta_vals.index(self.meta[i, 1])] += mean[i]
 
 			# = pixval
 
-		return hist,  t2t_grid_x,  t2t_grid_y
+		return hist, t2t_grid_x, t2t_grid_y
 
-	def makeHistogram(self, hist, alpha, beta, savefilename):
+	def makeHistogram(self, hist, atrue, btrue, savefilename, com):
 		import matplotlib.pylab as plt
+		from matplotlib.patches import Ellipse
+		compos = [np.rint(com[0]), np.rint(com[1])]
 		# import seaborn as sns
 		# sns.set_style("white")
 		# sns.set_context("paper")
+		ells = Ellipse(
+			com[::-1],
+			hist[:, int(compos[0])].std(),
+			hist[int(compos[1]), :].std())
 
-		labelx = 'Theta'
+		labelx = r'$\theta$'
 		if self.datatype == 'strain_tt':
-			labely = '2Theta'
+			labely = r'$2\theta$'
 		elif self.datatype == 'strain_eta':
 			labely = 'Eta'
 		elif self.datatype == 'topotomo':
@@ -218,31 +229,58 @@ class DFXM(object):
 			labelx = 'samry'
 			labely = 'samrz'
 
-		if len(hist[0, 0, :]) == 1:
-			fig, ax = plt.subplots(ncols=len(hist[0, 0, :]), figsize=(6 * len(hist[0, 0, :]), 6))
-			ax.pcolor(hist[:, :, 0], norm=matplotlib.colors.LogNorm(), cmap='Greens')
-			ax.set_xticks(np.arange(hist[:, :, 0].shape[1])+0.5,  minor=False)
-			ax.set_xticklabels(beta, rotation=70)
-			ax.set_yticks(np.arange(hist[:, :, 0].shape[0])+0.5,  minor=False)
-			ax.set_yticklabels(alpha)
-			ax.set_xlabel(labelx)
-			ax.set_ylabel(labely)
+		if len(np.shape(hist)) == 2:
+			# from mpl_toolkits.mplot3d import Axes3D
+			# fig2 = plt.figure()
+			# ax2 = fig2.add_subplot(111, projection='3d')
+			# # fig, ax = plt.subplots(ncols=len(hist[0, 0, :]), figsize=(6 * len(hist[0, 0, :]), 6))
+			#
+			# X, Y = np.meshgrid(atrue, btrue)
+			# R = np.sqrt(X**2 + Y**2)
+			# Z = np.sin(R)
+			# print np.shape(Z), len(X), len(Y), np.shape(hist), len(atrue)
+			# ax2.plot_surface(
+			# 	X, Y, np.log10(hist),
+			# 	rstride=1, cstride=1,
+			# 	linewidth=0, cmap='PuBu_r')
+			# ticks = ax2.get_xticks()
+			# ax2.set_zticks(np.log10(ticks))
+			# ax2.set_zticklabels(ticks)
+			# fig2.savefig(self.directory + '/%s_%s.pdf' % (savefilename, self.datatype))
+
+			fig = plt.figure()
+			ax = plt.subplot()
+			ax.pcolor(
+				hist,
+				norm=matplotlib.colors.LogNorm(),
+				cmap='PuBu_r')
+			ax.set_xticks(np.arange(hist[:, :].shape[1]) + 0.5, minor=False)
+			ax.set_xticklabels(np.round(btrue, 4), rotation=70)
+			ax.set_yticks(np.arange(hist[:, :].shape[0]) + 0.5, minor=False)
+			ax.set_yticklabels(np.round(atrue, 4))
+			ax.set_xlabel(labelx, fontsize=20)
+			ax.set_ylabel(labely, fontsize=20)
+			ax.autoscale(False)
+			# ax.add_artist(ells)
+			# ells.set_alpha(0.4)
+			# ells.set_facecolor('red')
+			# ax.scatter(compos[1], compos[0])
 
 		else:
 			fig, ax = plt.subplots(ncols=len(hist[0, 0, :]), figsize=(6 * len(hist[0, 0, :]), 6))
 			for i in range(len(hist[0, 0, :])):
 				ax[i].pcolor(hist[:, :, i], norm=matplotlib.colors.LogNorm(), cmap='Greens')
-				ax[i].set_xticks(np.arange(hist[:, :, i].shape[1])+0.5,  minor=False)
+				ax[i].set_xticks(np.arange(hist[:, :, i].shape[1]) + 0.5, minor=False)
 				ax[i].set_xticklabels(beta, rotation=70)
-				ax[i].set_yticks(np.arange(hist[:, :, i].shape[0])+0.5,  minor=False)
+				ax[i].set_yticks(np.arange(hist[:, :, i].shape[0]) + 0.5, minor=False)
 				ax[i].set_yticklabels(alpha)
 				ax[i].set_xlabel(labelx)
 				ax[i].set_ylabel(labely)
 
 		plt.axis('tight')
 		plt.tight_layout()
-		if self.rank == 0:
-			fig.savefig(self.directory + '/%s_%s.pdf' % (savefilename, self.datatype))
+		# if self.rank == 0:
+		# fig2.savefig(self.directory + '/%s_%s.pdf' % (savefilename, self.datatype))
 		return fig, ax
 
 	def makePlotArray(self, index, bins, xpos, savefilename):
@@ -282,18 +320,18 @@ class DFXM(object):
 				# self.makeROIAdjustmentArray()
 
 				if self.rank == 0:
-					x = int(len(img1[0, :])*xpos)
-					ta = np.ones((len(img1[:, 0]), len(img1[0, :]), 4),  dtype=np.uint8)*0
+					x = int(len(img1[0, :]) * xpos)
+					ta = np.zeros((len(img1[:, 0]), len(img1[0, :]), 4), dtype=np.uint8)
 
 					ta[:, :, 3] = 255
 					# ta[:, :, 0] = 255*img1/np.max(img1)
-					ta[:, :, 1] = 255*img1/np.max(img1)
+					ta[:, :, 1] = 255 * img1 / np.max(img1)
 					# ta[:, :, 1] = 255*img2/np.max(img2)
 
 					axarr[0, i].imshow(ta)
 					axarr[0, i].xaxis.set_major_formatter(plt.NullFormatter())
 					axarr[0, i].yaxis.set_major_formatter(plt.NullFormatter())
-					axarr[0, i].set_title('%.4f %.4f' % (self.beta0-self.meta[index[i, 0], 1], self.meta[index[i, 0], 0]))
+					axarr[0, i].set_title('%.4f %.4f' % (self.beta0 - self.meta[index[i, 0], 1], self.meta[index[i, 0], 0]))
 					axarr[0, i].autoscale(False)
 					axarr[0, i].plot([x, x], [0, len(img1[:, 0])], color='magenta')
 
@@ -308,18 +346,18 @@ class DFXM(object):
 				img2 = self.getImage(index[i, 1], False)
 				img1 = self.rebin(img1, bins)
 				img2 = self.rebin(img2, bins)
-				x = int(len(img1[0, :])*xpos)
-				ta = np.ones((len(img1[:, 0]), len(img1[0, :]), 4),  dtype=np.uint8)*0
+				x = int(len(img1[0, :]) * xpos)
+				ta = np.zeros((len(img1[:, 0]), len(img1[0, :]), 4), dtype=np.uint8)
 
 				ta[:, :, 3] = 255
-				ta[:, :, 0] = 255*img1/np.max(img1)
-				ta[:, :, 2] = 255*img1/np.max(img1)
-				ta[:, :, 1] = 255*img2/np.max(img2)
+				ta[:, :, 0] = 255 * img1 / np.max(img1)
+				ta[:, :, 2] = 255 * img1 / np.max(img1)
+				ta[:, :, 1] = 255 * img2 / np.max(img2)
 
 				axarr[0, i].imshow(ta)
 				axarr[0, i].xaxis.set_major_formatter(plt.NullFormatter())
 				axarr[0, i].yaxis.set_major_formatter(plt.NullFormatter())
-				axarr[0, i].set_title('%.4f %.4f' % (10.992-self.meta[index[i, 0], 1], self.meta[index[i, 0], 0]))
+				axarr[0, i].set_title('%.4f %.4f' % (10.992 - self.meta[index[i, 0], 1], self.meta[index[i, 0], 0]))
 				axarr[0, i].autoscale(False)
 				axarr[0, i].plot([x, x], [0, len(img1[:, 0])], color='white')
 
@@ -338,7 +376,7 @@ class DFXM(object):
 		# 		# labels = [item.get_text() for item in axarr.get_xticklabels()]
 		# 		# axarr[1, i].set_xticklabels(labels, rotation=70)
 
-		# fig,  ax = plt.subplots(figsize=(8, 8))
+		# fig, ax = plt.subplots(figsize=(8, 8))
 		# ax.get_xaxis().get_major_formatter().set_useOffset(False)
 		# off = diff/2
 		# off = off[:-1]
@@ -346,12 +384,12 @@ class DFXM(object):
 		# x1 = 10.992 - self.meta[index[:, 0], 1]
 		# x1 = x1[:-1]
 		# x = np.append(-x1, x1[::-1])
-		# print x,  offall
+		# print x, offall
 		# # x = 10.99 - self.meta[index[:, 0], 1]
 		# ax.set_ylabel('Lattice rotation [degrees]')
 		# ax.set_xlabel('Dislocation distance [um]')
 		# # ax.set_xticks(offall)
-		# ax.scatter(offall*0.08, x, s=50,  marker='o')
+		# ax.scatter(offall*0.08, x, s=50, marker='o')
 		plt.axis('tight')
 		# plt.tight_layout()
 		# if self.test == False:
@@ -364,8 +402,8 @@ class DFXM(object):
 		# sns.set_context("paper")
 
 		plt.figure(figsize=(20, 16))
-		gs1 = matplotlib.gridspec.GridSpec(8,  8)
-		gs1.update(wspace=0.025,  hspace=0.03)
+		gs1 = matplotlib.gridspec.GridSpec(8, 8)
+		gs1.update(wspace=0.025, hspace=0.03)
 
 		if len(index[0, :]) == 1:
 			for i in range(len(index[:, 0])):
@@ -374,8 +412,8 @@ class DFXM(object):
 				img1 = self.getImage(index[i, 0], False)
 				img1 = self.rebin(img1, bins)
 
-				x = int(len(img1[0, :])*xpos)
-				ta = np.ones((len(img1[:, 0]), len(img1[0, :]), 4),  dtype=np.uint8)*0
+				x = int(len(img1[0, :]) * xpos)
+				ta = np.zeros((len(img1[:, 0]), len(img1[0, :]), 4), dtype=np.uint8)
 
 				ta[:, :, 3] = 255
 				ta[:, :, 1] = img1
@@ -394,20 +432,20 @@ class DFXM(object):
 		if len(index[0, :]) != 1:
 			for i in range(len(index[:, 0])):
 				axarr = plt.subplot(gs1[i])
-				self.roi[2] = 350+i*15-20
-				self.roi[3] = 350+i*15+20
+				self.roi[2] = 350 + i * 15 - 20
+				self.roi[3] = 350 + i * 15 + 20
 				img1 = self.getImage(index[i, 0], False)
 
 				img2 = self.getImage(index[i, 1], False)
 				img1 = self.rebin(img1, bins)
 				img2 = self.rebin(img2, bins)
-				x = int(len(img1[0, :])*xpos)
-				ta = np.ones((len(img1[:, 0]), len(img1[0, :]), 4),  dtype=np.uint8)*0
+				x = int(len(img1[0, :]) * xpos)
+				ta = np.zeros((len(img1[:, 0]), len(img1[0, :]), 4), dtype=np.uint8)
 
 				ta[:, :, 3] = 255
-				ta[:, :, 0] = 255*img1/np.max(img1)
-				ta[:, :, 2] = 255*img1/np.max(img1)
-				ta[:, :, 1] = 255*img2/np.max(img2)
+				ta[:, :, 0] = 255 * img1 / np.max(img1)
+				ta[:, :, 2] = 255 * img1 / np.max(img1)
+				ta[:, :, 1] = 255 * img2 / np.max(img2)
 
 				axarr.imshow(ta)
 				axarr.xaxis.set_major_formatter(plt.NullFormatter())
@@ -416,9 +454,9 @@ class DFXM(object):
 				axarr.autoscale(False)
 				axarr.plot([x, x], [0, len(img1[:, 0])], color='blue')
 
-				axarr = plt.subplot(gs1[i+4*8])
-				axarr.plot(img1[:, len(img1[0, :])/2], 'magenta', alpha=0.5)
-				axarr.plot(img2[:, len(img2[0, :])/2], 'green', alpha=0.5)
+				axarr = plt.subplot(gs1[i + 4 * 8])
+				axarr.plot(img1[:, len(img1[0, :]) / 2], 'magenta', alpha=0.5)
+				axarr.plot(img2[:, len(img2[0, :]) / 2], 'green', alpha=0.5)
 				# labels = [item.get_text() for item in axarr.get_xticklabels()]
 				# axarr[1, i].set_xticklabels(labels, rotation=70)
 
@@ -428,7 +466,7 @@ class DFXM(object):
 			plt.savefig(self.directory + '/%s_%s_x%g.pdf' % (savefilename, self.datatype, xpos))
 
 	def pixelArray(self, img, index, i):
-		npix = len(img[:, 0])*len(img[0, :])
+		npix = len(img[:, 0]) * len(img[0, :])
 		self.pixarr = np.zeros((len(index[:, 0]), npix))
 
 		img2 = np.reshape(img, (npix))
@@ -440,7 +478,7 @@ class DFXM(object):
 		max2 = np.argmax(y2)
 		max1 = np.argmax(y1[:max2])
 
-		max2 = np.argmax(y2[max1+2:])+max1+2
+		max2 = np.argmax(y2[max1 + 2:]) + max1 + 2
 
 		return max1, max2  # ,popt# max1+max2min, max2+max2min, max2min
 
@@ -450,11 +488,11 @@ class DFXM(object):
 
 		index = self.getIndex(float(self.alphavals[i1]), float(self.betavals[i2]))
 		img = self.getImage(index[0], True)
-		pic = np.zeros((len(img[:, 0]), len(img[0, :]), 4),  dtype=np.uint8)
+		pic = np.zeros((len(img[:, 0]), len(img[0, :]), 4), dtype=np.uint8)
 		pic[:, :, 3] = 255
-		pic[:, :, 1] = 255*img/np.max(img)
+		pic[:, :, 1] = 255 * img / np.max(img)
 
-		fig,  ax = plt.subplots(figsize=(8, 8))
+		fig, ax = plt.subplots(figsize=(8, 8))
 		ax.plot([self.roi[0], self.roi[0]], [self.roi[2], self.roi[3]], color='magenta')
 		ax.plot([self.roi[1], self.roi[1]], [self.roi[2], self.roi[3]], color='magenta')
 		ax.plot([self.roi[0], self.roi[1]], [self.roi[2], self.roi[2]], color='magenta')
@@ -468,9 +506,9 @@ class DFXM(object):
 
 	def getProjection(self, data, x0, y0, x1, y1, num):
 		# num = 500
-		x,  y = np.linspace(x0,  x1,  num),  np.linspace(y0,  y1,  num)
-		zi = scipy.ndimage.map_coordinates(np.transpose(data),  np.vstack((x, y)))
-		length = math.sqrt((x1-x0)**2+(y1-y0)**2)
+		x, y = np.linspace(x0, x1, num), np.linspace(y0, y1, num)
+		zi = scipy.ndimage.map_coordinates(np.transpose(data), np.vstack((x, y)))
+		length = math.sqrt((x1 - x0)**2 + (y1 - y0)**2)
 		return zi, length
 
 	def strainRange(self, data_part, xr, beta0):
@@ -480,13 +518,13 @@ class DFXM(object):
 		leny = len(data_part[0, 0, :])
 
 		for i in range(lenx):
-			if self.rank == 0 and 10*float(i)/lenx % 1 == 0.0:
-				done = 100*(float(i)/lenx)
+			if self.rank == 0 and 10 * float(i) / lenx % 1 == 0.0:
+				done = 100 * (float(i) / lenx)
 				print "Calculation is %g perc. complete..." % done
 			for j in range(leny):
 				try:
 					popt, pcov = self.fitGaussian(xr, data_part[:, i, j])
-					strain = popt[1]/(beta0)  # -0.00003
+					strain = popt[1] / (beta0)  # -0.00003
 					if strain >= -0.001 and strain <= 0.001:
 						strainpic[i, j] = strain
 				except TypeError:
@@ -498,12 +536,12 @@ class DFXM(object):
 	def makeStrainArrayMPI(self, alldata, bins, xr, beta0):
 		print self.rank, self.size
 
-		ypix = (self.roi[1]-self.roi[0])/bins
+		ypix = (self.roi[1] - self.roi[0]) / bins
 
 		# Chose part of data set for a specific CPU (rank).
-		local_n = ypix/self.size
-		istart = self.rank*local_n
-		istop = (self.rank+1)*local_n
+		local_n = ypix / self.size
+		istart = self.rank * local_n
+		istop = (self.rank + 1) * local_n
 		local_data = alldata[:, :, istart:istop]
 
 		# Calculate strain on part of data set.
@@ -518,12 +556,12 @@ class DFXM(object):
 			datarank = strainpic_part[0, 0]
 			strainpic_part[0, 0] = 0
 			strainpic[:, istart:istop] = strainpic_part
-			for i in range(1,  self.size):
+			for i in range(1, self.size):
 				try:
-					self.comm.Recv(recv_buffer,  MPI.ANY_SOURCE)
+					self.comm.Recv(recv_buffer, MPI.ANY_SOURCE)
 					datarank = int(recv_buffer[0, 0])
 					recv_buffer[0, 0] = 0
-					strainpic[:, datarank*local_n:(datarank+1)*local_n] = recv_buffer
+					strainpic[:, datarank * local_n:(datarank + 1) * local_n] = recv_buffer
 				except Exception:
 					print "MPI error."
 
@@ -541,19 +579,22 @@ class DFXM(object):
 			start = time.time()
 
 		def gaussRange(data_part, xr):
-			theta = np.arange(-0.0025*(length/2), 0.0025*(length/2)+.001, .001)
+			theta = np.arange(
+				-0.0025 * (length / 2),
+				0.0025 * (length / 2) + .001,
+				.001)
 			gaussarray = np.zeros((len(data_part[0, :, 0]), len(data_part[0, 0, :]), 3))
 
 			for i in range(len(data_part[0, :, 0])):
 
-				if self.rank == 0 and 10*float(i)/len(data_part[0, :, 0]) % 1 == 0.0:
-					done = 100*(float(i)/len(data_part[0, :, 0]))
+				if self.rank == 0 and 10 * float(i) / len(data_part[0, :, 0]) % 1 == 0.0:
+					done = 100 * (float(i) / len(data_part[0, :, 0]))
 					print "Calculation is %g perc. complete..." % done
 				for j in range(len(data_part[0, 0, :])):
 
 					popt, pcov = self.fitGaussian(xr, data_part[:, i, j])
 					ygauss = self.gaus(theta, popt[0], popt[1], popt[2])
-					intpixel = sum([abs(x)*y for x, y in zip(theta, ygauss)])
+					intpixel = sum([abs(x) * y for x, y in zip(theta, ygauss)])
 					gaussarray[i, j, 0] = intpixel
 					gaussarray[i, j, 1] = popt[1]
 					gaussarray[i, j, 2] = popt[2]
@@ -561,18 +602,18 @@ class DFXM(object):
 			gaussarray[0, 0] = self.rank
 			return gaussarray
 
-		ypix = (self.roi[1]-self.roi[0])/bins
+		ypix = (self.roi[1] - self.roi[0]) / bins
 		# xpix = (self.roi[3]-self.roi[2])/bins
 
 		# Chose part of data set for a specific CPU (rank).
-		local_n = ypix/self.size
-		istart = self.rank*local_n
-		istop = (self.rank+1)*local_n
+		local_n = ypix / self.size
+		istart = self.rank * local_n
+		istop = (self.rank + 1) * local_n
 		local_data = alldata[:, :, istart:istop]
 
 		if self.rank == 0:
 			end = time.time()
-			print "Init time: ", end-start
+			print "Init time: ", end - start
 		# Calculate gaussian on part of data set.
 		gaussarray_part = gaussRange(local_data, xr)
 
@@ -588,13 +629,13 @@ class DFXM(object):
 			datarank = gaussarray_part[0, 0]
 			gaussarray_part[0, 0] = 0
 			gaussarray[:, istart:istop, :] = gaussarray_part
-			for i in range(1,  self.size):
-				self.comm.Recv(recv_buffer,  MPI.ANY_SOURCE)
+			for i in range(1, self.size):
+				self.comm.Recv(recv_buffer, MPI.ANY_SOURCE)
 				datarank = recv_buffer[0][0, 0, 0]
 				recv_buffer[0][0, 0, 0] = recv_buffer[0][0, 1, 0]
 				recv_buffer[0][0, 0, 1] = recv_buffer[0][0, 1, 1]
 				recv_buffer[0][0, 0, 2] = recv_buffer[0][0, 1, 2]
-				gaussarray[:, datarank*local_n:(datarank+1)*local_n, :] = recv_buffer[0]
+				gaussarray[:, datarank * local_n:(datarank + 1) * local_n, :] = recv_buffer[0]
 
 		else:
 			# all other process send their result
@@ -610,12 +651,12 @@ class DFXM(object):
 			start = time.time()
 
 		def gaussRange(data_part, xr):
-			xr_fine = np.arange(min(xr), max(xr), abs(xr[1]-xr[0])*0.05)
+			xr_fine = np.arange(min(xr), max(xr), abs(xr[1] - xr[0]) * 0.05)
 			gaussarray = np.zeros((len(data_part[0, :, 0]), len(data_part[0, 0, :]), 3))
 			errors = 0
 			for i in range(len(data_part[0, :, 0])):
 
-				rd = round(float(i)/len(data_part[0, :, 0]), 3)
+				rd = round(float(i) / len(data_part[0, :, 0]), 3)
 
 				if self.rank == 0:
 					if rd == 0.0 or \
@@ -628,7 +669,7 @@ class DFXM(object):
 						rd == 0.7 or \
 						rd == 0.8 or \
 						rd == 0.9:
-						done = 100*(float(i)/len(data_part[0, :, 0]))
+						done = 100 * (float(i) / len(data_part[0, :, 0]))
 						print "Calculation is %g perc. complete..." % done
 				for j in range(len(data_part[0, 0, :])):
 					try:
@@ -642,22 +683,22 @@ class DFXM(object):
 						errors += 1
 						# print i, j, "Gaussian could not be fitted."
 
-			print "Errors: "  + str(errors)
+			print "Errors: " + str(errors)
 			gaussarray[0, 0] = self.rank
 			return gaussarray
 
-		ypix = (self.roi[1]-self.roi[0])/bins
+		ypix = (self.roi[1] - self.roi[0]) / bins
 		# xpix = (self.roi[3]-self.roi[2])/bins
 
 		# Chose part of data set for a specific CPU (rank).
-		local_n = ypix/self.size
-		istart = self.rank*local_n
-		istop = (self.rank+1)*local_n
+		local_n = ypix / self.size
+		istart = self.rank * local_n
+		istop = (self.rank + 1) * local_n
 		local_data = alldata[:, :, istart:istop]
 
 		if self.rank == 0:
 			end = time.time()
-			print "Init time: ", end-start
+			print "Init time: ", end - start
 		# Calculate gaussian on part of data set.
 		gaussarray_part = gaussRange(local_data, xr)
 
@@ -673,13 +714,13 @@ class DFXM(object):
 			datarank = gaussarray_part[0, 0]
 			gaussarray_part[0, 0] = 0
 			gaussarray[:, istart:istop, :] = gaussarray_part
-			for i in range(1,  self.size):
-				self.comm.Recv(recv_buffer,  MPI.ANY_SOURCE)
+			for i in range(1, self.size):
+				self.comm.Recv(recv_buffer, MPI.ANY_SOURCE)
 				datarank = recv_buffer[0][0, 0, 0]
 				recv_buffer[0][0, 0, 0] = recv_buffer[0][0, 1, 0]
 				recv_buffer[0][0, 0, 1] = recv_buffer[0][0, 1, 1]
 				recv_buffer[0][0, 0, 2] = recv_buffer[0][0, 1, 2]
-				gaussarray[:, datarank*local_n:(datarank+1)*local_n, :] = recv_buffer[0]
+				gaussarray[:, datarank * local_n:(datarank + 1) * local_n, :] = recv_buffer[0]
 
 		else:
 			# all other process send their result
@@ -700,26 +741,25 @@ class DFXM(object):
 
 		amplpic[:, :] = gaussarray[:, :, 0]
 		midppic[:, :] = gaussarray[:, :, 1]
-		fwhmpic[:, :] = 2*math.sqrt(2*math.log(2))*gaussarray[:, :, 2]
-
+		fwhmpic[:, :] = 2 * math.sqrt(2 * math.log(2)) * gaussarray[:, :, 2]
 
 		im0 = axppos[0].imshow(amplpic[3:-3, 3:-3], cmap='jet', interpolation='None')
 		im1 = axppos[1].imshow(fwhmpic[3:-3, 3:-3], cmap='jet', interpolation='None')
-		im2 = axppos[2].imshow(midppic[3:-3, 3:-3] , cmap='BrBG', interpolation='None')
+		im2 = axppos[2].imshow(midppic[3:-3, 3:-3], cmap='BrBG', interpolation='None')
 
 		axppos[0].set_title('AMPL')
 		axppos[1].set_title('MIDP')
 		axppos[2].set_title('FWHM')
 
-		def fmt(x,  pos):
-			a,  b = '{:.2e}'.format(x).split('e')
+		def fmt(x, pos):
+			a, b = '{:.2e}'.format(x).split('e')
 			b = int(b)
-			return r'${} \times 10^{{{}}}$'.format(a,  b)
+			return r'${} \times 10^{{{}}}$'.format(a, b)
 
 		figstrain.subplots_adjust(right=0.8)
-		cbar_ax0 = figstrain.add_axes([0.85,  0.7,  0.02,  0.2])
-		cbar_ax1 = figstrain.add_axes([0.85,  0.4,  0.02,  0.2])
-		cbar_ax2 = figstrain.add_axes([0.85,  0.05,  0.02,  0.2])
+		cbar_ax0 = figstrain.add_axes([0.85, 0.7, 0.02, 0.2])
+		cbar_ax1 = figstrain.add_axes([0.85, 0.4, 0.02, 0.2])
+		cbar_ax2 = figstrain.add_axes([0.85, 0.05, 0.02, 0.2])
 		clb0 = figstrain.colorbar(im0, cax=cbar_ax0)  # , format=ticker.FuncFormatter(fmt))
 		clb1 = figstrain.colorbar(im1, cax=cbar_ax1)  # , format=ticker.FuncFormatter(fmt))
 		clb2 = figstrain.colorbar(im2, cax=cbar_ax2)  # , format=ticker.FuncFormatter(fmt))
@@ -766,14 +806,13 @@ class DFXM(object):
 		fig2, ax2 = plt.subplots(1, 1)
 		plt.tight_layout()
 
-		fig0.set_size_inches(7,7)
-		fig1.set_size_inches(7,7)
-		fig2.set_size_inches(7,7)
+		fig0.set_size_inches(7, 7)
+		fig1.set_size_inches(7, 7)
+		fig2.set_size_inches(7, 7)
 
 		fig0.set_dpi(500)
 		fig1.set_dpi(500)
 		fig2.set_dpi(500)
-
 
 		amplpic = np.zeros((np.shape(gaussarray[:, :, 0])))
 		midppic = np.zeros((np.shape(gaussarray[:, :, 0])))
@@ -781,8 +820,7 @@ class DFXM(object):
 
 		amplpic[:, :] = gaussarray[:, :, 0]
 		midppic[:, :] = gaussarray[:, :, 1]
-		fwhmpic[:, :] = 2*math.sqrt(2*math.log(2))*gaussarray[:, :, 2]
-
+		fwhmpic[:, :] = 2 * math.sqrt(2 * math.log(2)) * gaussarray[:, :, 2]
 
 		# midppic[midppic < -0.005] = -0.005
 		# midppic[midppic > 0.02] = 0.02
@@ -793,26 +831,24 @@ class DFXM(object):
 
 		im0 = ax0.imshow(amplpic[3:-3, 3:-3], cmap='jet', interpolation='None')
 		im1 = ax1.imshow(fwhmpic[3:-3, 3:-3], cmap='BrBG', interpolation='None')
-		im2 = ax2.imshow(midppic[3:-3, 3:-3] , cmap='BrBG', interpolation='None')
-
-
+		im2 = ax2.imshow(midppic[3:-3, 3:-3], cmap='BrBG', interpolation='None')
 
 		ax0.set_title('AMPL')
 		ax1.set_title('FWHM')
 		ax2.set_title('MIDP')
 
-		def fmt(x,  pos):
-			a,  b = '{:.2e}'.format(x).split('e')
+		def fmt(x, pos):
+			a, b = '{:.2e}'.format(x).split('e')
 			b = int(b)
-			return r'${} \times 10^{{{}}}$'.format(a,  b)
+			return r'${} \times 10^{{{}}}$'.format(a, b)
 
 		fig0.subplots_adjust(right=0.8)
 		fig1.subplots_adjust(right=0.8)
 		fig2.subplots_adjust(right=0.8)
 
-		cbar_ax0 = fig0.add_axes([0.85,  0.1,  0.05,  0.8])
-		cbar_ax1 = fig1.add_axes([0.85,  0.1,  0.05,  0.8])
-		cbar_ax2 = fig2.add_axes([0.85,  0.1,  0.05,  0.8])
+		cbar_ax0 = fig0.add_axes([0.85, 0.1, 0.05, 0.8])
+		cbar_ax1 = fig1.add_axes([0.85, 0.1, 0.05, 0.8])
+		cbar_ax2 = fig2.add_axes([0.85, 0.1, 0.05, 0.8])
 
 		clb0 = fig0.colorbar(im0, cax=cbar_ax0)  # , format=ticker.FuncFormatter(fmt))
 		clb1 = fig1.colorbar(im1, cax=cbar_ax1)  # , format=ticker.FuncFormatter(fmt))
@@ -826,10 +862,10 @@ class DFXM(object):
 			fig0.savefig(self.directory + '/ampl-map_%s_%s-%s-%s-%s.pdf' % (self.datatype, self.roi[0], self.roi[1], self.roi[2], self.roi[3], ))
 			fig1.savefig(self.directory + '/fwhm-map_%s_%s-%s-%s-%s.pdf' % (self.datatype, self.roi[0], self.roi[1], self.roi[2], self.roi[3], ))
 			fig2.savefig(self.directory + '/midp-map_%s_%s-%s-%s-%s.pdf' % (self.datatype, self.roi[0], self.roi[1], self.roi[2], self.roi[3], ))
-		#return figstrain, axppos
+		# return figstrain, axppos
 
 	def plotStrainHeatmap(self, alldata):
-		img = np.zeros((len(alldata[0, :, 0]), len(alldata[0, 0, :]), 4),  dtype=np.uint8)
+		img = np.zeros((len(alldata[0, :, 0]), len(alldata[0, 0, :]), 4), dtype=np.uint8)
 
 		# for i in range(len(alldata[:, 0, 0])/2+1):
 		# 	rawdata = alldata[i, :, :]
@@ -865,21 +901,23 @@ class DFXM(object):
 		ax.imshow(img)
 
 	def adjustGradient(self):
-		xpix = (self.roi[3]-self.roi[2])
-		ypix = (self.roi[1]-self.roi[0])
-		length = int(math.sqrt(2*ypix**2))
+		xpix = (self.roi[3] - self.roi[2])
+		ypix = (self.roi[1] - self.roi[0])
+		length = int(math.sqrt(2 * ypix**2))
 		gradient = np.ones((length, length))
 		for i in range(length):
-			gradient[i, :] *= -0.0001 + 2*i*0.0001/length
+			gradient[i, :] *= -0.0001 + 2 * i * 0.0001 / length
 
 		gradient = scipy.ndimage.interpolation.rotate(gradient, 125)
 		# im2 = axstrain[1].imshow(gradient)
 		l = len(gradient)
-		gradient = gradient[l/2-xpix/2:l/2+xpix/2, l/2-ypix/2:l/2+ypix/2]
+		gradient = gradient[
+			l / 2 - xpix / 2:l / 2 + xpix / 2,
+			l / 2 - ypix / 2:l / 2 + ypix / 2]
 		return gradient
 
 	def plotStrain(self, strainpic, imgarray, label):
-		# import matplotlib.ticker as ticker
+		import matplotlib.ticker as ticker
 		# sns.set_context("talk")
 
 		print "strainpic dimensions: " + str(np.shape(strainpic))
@@ -894,32 +932,46 @@ class DFXM(object):
 
 		im = axstrain[0].imshow(strainpic_adjusted, cmap="BrBG")
 		# im = axstrain[0].imshow(strainpic+gradient, cmap="BrBG")
-		im2 = axstrain[1].imshow(imgarray[len(imgarray[:, 0, 0])/2-4, :, :], cmap="Greens")
+		im2 = axstrain[1].imshow(imgarray[len(imgarray[:, 0, 0]) / 2 - 4, :, :], cmap="Greens")
 
-		axstrain[1].set_title("%g %g %g %g" % (self.roi[0], self.roi[1], self.roi[2], self.roi[3]))
-		axstrain[0].set_title(r'$\epsilon_{220}$')
+		# axstrain[1].set_title("%g %g %g %g" % (self.roi[0], self.roi[1], self.roi[2], self.roi[3]))
+		axstrain[0].set_title(r'$\epsilon_{200}$')
+		labels = axstrain[0].get_xticklabels()
+		for i in range(len(labels)):
+			labels[i] = (i - 1) * 10
 
-		def fmt(x,  pos):
-			a,  b = '{:.2e}'.format(x).split('e')
+		axstrain[0].set_xticklabels(labels)
+		axstrain[0].set_yticklabels(labels)
+		axstrain[1].set_xticklabels(labels)
+		axstrain[1].set_yticklabels(labels)
+
+		axstrain[0].set_xlabel(r'[$\mu m$]')
+		axstrain[1].set_xlabel(r'[$\mu m$]')
+		axstrain[0].set_ylabel(r'[$\mu m$]')
+		axstrain[1].set_ylabel(r'[$\mu m$]')
+
+		def fmt(x, pos):
+			a, b = '{:.2e}'.format(x).split('e')
 			b = int(b)
-			return r'${} \times 10^{{{}}}$'.format(a,  b)
+			return r'${} \times 10^{{{}}}$'.format(a, b)
 
-		figstrain.subplots_adjust(right=0.8)
-		cbar_ax1 = figstrain.add_axes([0.85,  0.55,  0.02,  0.35])
-		cbar_ax2 = figstrain.add_axes([0.85,  0.1,  0.02,  0.35])
-		clb = figstrain.colorbar(im, cax=cbar_ax1)  # , format=ticker.FuncFormatter(fmt))
+		figstrain.subplots_adjust(right=0.6)
+		cbar_ax1 = figstrain.add_axes([0.85, 0.55, 0.02, 0.35])
+		cbar_ax2 = figstrain.add_axes([0.85, 0.1, 0.02, 0.35])
+		clb = figstrain.colorbar(im, cax=cbar_ax1, format=ticker.FuncFormatter(fmt))
 		figstrain.colorbar(im2, cax=cbar_ax2)
 
-		linestart = [100, 50]
-		linestop = [100, 350]
+		linestart = [100, 25]
+		linestop = [100, 175]
 		clb.set_clim(-0.00004, 0.00004)
 		axstrain[0].autoscale(False)
 		axstrain[0].plot([linestart[0], linestop[0]], [linestart[1], linestop[1]])
 
-		z, length = self.getProjection(strainpic, linestart[0], linestart[1], linestop[0], linestop[1], 500)
+		z, length = self.getProjection(strainpic_adjusted, linestart[0], linestart[1], linestop[0], linestop[1], 500)
 		f3, ax3 = plt.subplots()
-		linerange = np.linspace(0, 90*length/1000, len(z))
+		linerange = np.linspace(0, 180 * length / 1000, len(z))
 		ax3.plot(linerange, z)
+		ax3.yaxis.get_major_formatter().set_powerlimits((0, 1))
 		ax3.set_ylabel(r'Strain [$\Delta\theta/\theta$]')
 		ax3.set_xlabel(r'[$\mu m$]')
 
@@ -930,7 +982,7 @@ class DFXM(object):
 		# strain = np.reshape(strainpic, len(strainpic[:, 0])*len(strainpic[0, :]))
 		# # strain[strain<-0.0005] = 0
 		# # strain[strain>0.0005] = 0
-		# # sns.distplot(strain, kde=False,  rug=False)
+		# # sns.distplot(strain, kde=False, rug=False)
 		# ax4.set_xlim(np.min(strain)-abs(0.1*np.min(strain)), np.max(strain)+0.1*np.max(strain))
 		# # ax4.set_xlim(-0.0004,0.0004)
 		# ax4.set_xlabel(r'$\theta$ offset [$^o$]')
@@ -960,7 +1012,11 @@ if __name__ == '__main__':
 	size = [600, 300]
 
 	# ROI calculated.
-	roi = [poi[0]-size[0]/2, poi[0]+size[0]/2, poi[1]-size[1]/2, poi[1]+size[1]/2]
+	roi = [
+		poi[0] - size[0] / 2,
+		poi[0] + size[0] / 2,
+		poi[1] - size[1] / 2,
+		poi[1] + size[1] / 2]
 
 	from lib.getedfdata import *
 	data = GetEdfData(path, filename, bg_path, bg_filename, roi, datatype, test_switch)
