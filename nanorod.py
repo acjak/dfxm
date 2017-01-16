@@ -2,6 +2,8 @@
 """blah."""
 
 import EdfFile
+import matplotlib
+matplotlib.rc('font', family='DejaVu Sans')
 import matplotlib.pyplot as plt
 import numpy as np
 
@@ -20,11 +22,13 @@ print np.shape(np.abs(img_fft))
 
 ff = ffclass.GetData(0).astype(np.int64)
 
-cr = img * ff.mean()/ ff
+cr = img * ff.mean() / ff
 
 print cr.max()
 
 cr[cr > 600] = 600
+img[img > 1000] = 1000
+img[img < 0] = 0
 # cr[cr < 0] = 0
 
 # cr_fft = np.fft.fft2(cr)
@@ -49,6 +53,28 @@ cr[cr > 600] = 600
 # img_focus[img_focus > 200] = 200
 # img_focus[img_focus < 0] = 0
 
-plt.imshow(cr, cmap='Greys')
+fig, ax = plt.subplots(1, 2, figsize=(14, 7))
+
+s = 2048
+
+ax[0].imshow(img, cmap='Greys')
+ax[0].autoscale(False)
+ax[0].plot(
+	[s - 100 - 300, s - 100],
+	[s - 100, s - 100],
+	linewidth=5,
+	color='blue')
+ax[0].text(s - 420, s - 150, u'5 um', color='blue', fontsize=16)
+
+ax[1].imshow(cr, cmap='Greys')
+ax[1].autoscale(False)
+ax[1].plot(
+	[s - 100 - 300, s - 100],
+	[s - 100, s - 100],
+	linewidth=5,
+	color='blue')
+ax[1].text(s - 420, s - 150, u'5 um', color='blue', fontsize=16)
+
+fig.savefig('output/nanorod.png')
 
 plt.show()
