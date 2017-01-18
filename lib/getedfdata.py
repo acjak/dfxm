@@ -68,31 +68,35 @@ class GetEdfData(object):
 		in any information that is necessary.
 	"""
 
-	def __init__(
-		self,
-		path,
-		filename,
-		bg_path,
-		bg_filename,
-		roi,
-		datatype,
-		test_switch):
+	def __init__(self, runvars):
+		# self,
+		# path,
+		# filename,
+		# bg_path,
+		# bg_filename,
+		# roi,
+		# datatype,
+		# test_switch):
+
 		super(GetEdfData, self).__init__()
 
 		self.comm = MPI.COMM_WORLD
 		self.rank = self.comm.Get_rank()
 		self.size = self.comm.Get_size()
 
-		self.datatype = datatype
-		self.sampletitle = filename
-		self.path = path
-		self.bg_path = bg_path
-		self.roi = roi
-		self.ts = test_switch
+		self.datatype = runvars[4]
+		self.sampletitle = runvars[1]
+		self.path = runvars[0]
+		self.bg_path = runvars[2]
+		self.roi = runvars[5]
+		self.ts = runvars[6]
 		# if test_switch:
 		self.makeOutputFolder()
 
-		self.getFilelists(filename, bg_filename)
+		filename = runvars[1]
+		motors = runvars[7]
+
+		self.getFilelists(filename, runvars[3])
 
 		self.dirhash = hashlib.md5(
 			self.path + '/' +
@@ -102,7 +106,7 @@ class GetEdfData(object):
 		print self.path + '/' + filename
 
 		self.getBGarray()
-		self.getMetaData()
+		self.getMetaData(motors)
 		self.makeROIAdjustmentArray()
 		if self.rank == 0 and self.ts:
 			self.printInfoToFile()
@@ -424,7 +428,27 @@ class GetEdfData(object):
 
 		self.meta = np.around(self.meta, decimals=8)
 
-	def getMetaData(self):
+	def makeMetaArrayChoice(self, motors):
+		self.meta = np.zeros((len(self.data_files), 4))
+
+		if self.rank == 0:
+			print "Making meta array."
+
+		for i in range(len(self.fma)):
+			# try:
+			# 	mot_array, motpos_array, det_array, detpos_array, srcur = self.getHeader(i)
+			# except ValueError:
+			# 	mot_array, motpos_array, det_array, detpos_array = self.getHeader(i)
+			# 	self.meta[i, 3] = self.fma[i][self.indexlist.index('srcur')]
+
+			self.meta[i, 0] = self.fma[i][self.indexlist.index(motors[0])]
+			self.meta[i, 1] = self.fma[i][self.indexlist.index(motors[1])]
+			self.meta[i, 2] = self.fma[i][self.indexlist.index(motors[2])]
+			self.meta[i, 3] = self.fma[i][self.indexlist.index('srcur')]
+
+		self.meta = np.around(self.meta, decimals=8)
+
+	def getMetaData(self, motors):
 		fullmetadatafile = 'tmp/datafullmeta_%s.npy' % self.dirhash
 		metadatafile = 'tmp/datameta_%s.txt' % self.dirhash
 		indexfile = 'tmp/dataindex_%s.npy' % self.dirhash
@@ -439,7 +463,8 @@ class GetEdfData(object):
 		else:
 			print "Making meta data file."
 			self.makeFullMetaArray()
-			self.makeMetaArrayNew()
+			# self.makeMetaArrayNew()
+			self.makeMetaArrayChoice(motors)
 			np.savetxt(metadatafile, self.meta)
 			np.save(indexfile, self.indexlist)
 			np.save(fullmetadatafile, self.fma)
