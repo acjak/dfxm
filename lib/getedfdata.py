@@ -682,7 +682,7 @@ class GetEdfData(object):
 				fittedline = fittedline - fittedline[len(fittedline) / 2]
 				# imgsum2 = imgsum-fittedline
 
-				gradient = np.tile(fittedline, (len(img0[:, 0]), 1)).transpose()
+				gradient = np.tile(fittedline, (len(img0[0, :]), 1)).transpose()
 
 				imgarray_part[i, :, :] = img0 - gradient
 
