@@ -158,11 +158,11 @@ class DFXM(object):
 	def gaus(self, x, a, x0, sigma):
 		return a * np.exp(-(x - x0)**2 / (2 * sigma**2))
 
-	def fitGaussian(self, x, y):
+	def fitGaussian(self, x, y, div):
 		from scipy.optimize import curve_fit
 
 		try:
-			popt, pcov = curve_fit(self.gaus, x, y, p0=[max(y), x[np.argmax(y)], -3.E-3], maxfev=10000)
+			popt, pcov = curve_fit(self.gaus, x, y, p0=[max(y), x[np.argmax(y)], div], maxfev=10000)
 			return popt, pcov
 		except RuntimeError:
 			pass
@@ -509,7 +509,7 @@ class DFXM(object):
 		x, y = np.linspace(x0, x1, num), np.linspace(y0, y1, num)
 		zi = scipy.ndimage.map_coordinates(np.transpose(data), np.vstack((x, y)))
 		length = math.sqrt((x1 - x0)**2 + (y1 - y0)**2)
-		return zi, length
+		return zi  # , length
 
 	def strainRange(self, data_part, xr, beta0):
 		strainpic = np.zeros((np.shape(data_part[0, :, :])), dtype='float64')
