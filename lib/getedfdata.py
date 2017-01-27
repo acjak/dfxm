@@ -659,6 +659,14 @@ class GetEdfData(object):
 		img[:, :, 0] = 255 * data2 / np.max(data2)
 		return img
 
+	def calcGradient(self, img0):
+		imgsum = np.sum(img0, 1) / len(img0[0, :])
+		ran = np.array(range(len(imgsum)))
+		popt, pcov = self.fitLine(ran, imgsum)
+		fittedline = ran * popt[0] + popt[1]
+		fittedline = fittedline - fittedline[len(fittedline) / 2]
+		return np.tile(fittedline, (len(img0[0, :]), 1)).transpose()
+
 	def makeImgArray(self, index, xpos, savefilename):
 		img = self.getImage(index[0], False)
 		# npix = len(img[:, 0])*len(img[0, :])
@@ -670,19 +678,8 @@ class GetEdfData(object):
 				print "Adding image " + str(i) + " to array. (rank " + str(self.rank) + ').'
 
 				img0 = self.getImage(index_part[i], False)
-				imgsum = np.sum(img0, 1) / len(img0[0, :])
 
-				# return imgarray_part[i, :, :], imgsum
-				ran = np.array(range(len(imgsum)))
-
-				popt, pcov = self.fitLine(ran, imgsum)
-
-				fittedline = ran * popt[0] + popt[1]
-
-				fittedline = fittedline - fittedline[len(fittedline) / 2]
-				# imgsum2 = imgsum-fittedline
-
-				gradient = np.tile(fittedline, (len(img0[0, :]), 1)).transpose()
+				gradient = self.calcGradient(img0)
 
 				imgarray_part[i, :, :] = img0 - gradient
 
