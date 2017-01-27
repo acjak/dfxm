@@ -5,6 +5,7 @@ comparefilters/
 *.pyc
 *.log
 *.png
+*.eps
 resolution_paper/plots/
 resolution_paper/reciprocal_data_gauss_fitted/
 resolution_paper/input/
