@@ -17,7 +17,7 @@ cx1 = np.zeros((1000), dtype=np.complex)
 # cx2 = np.zeros((1000), dtype=np.complex)
 
 r0 = 40000000.
-r1 = 40000.
+r1 = 50000.
 
 lamb = 41.33E-6
 # delta = -0.0001
@@ -44,9 +44,10 @@ for i, x1 in enumerate(x1array):
 	# print np.sum(np.exp(((2 * j * np.pi) / lamb) * ((x - x1) ** 2) * 2 * r1))
 
 	# cx1[i] = prefix * np.sum(np.exp(((2 * j * np.pi) / lamb) * ((x - x1) ** 2) * 2 * r1) * (np.exp(j * phi) - 1))
-	cx1[i] = prefix2 * np.exp((2 * np.pi * j) / lamb * (-(x1 - x0)**2) / (2 * r)) * \
-		np.sum(np.exp(((2 * j * np.pi) / lamb) * ((x - x0) ** 2) / (2 * r0) + ((x1 - x) ** 2) / (2 * r1)) *
-		(np.exp(j * phi) - 1))
+	cx1[i] = prefix2 * \
+				np.exp((2 * np.pi * j) / lamb * (-(x1 - x0)**2) / (2 * r)) * \
+				np.sum(np.exp(((2 * j * np.pi) / lamb) * ((x - x0) ** 2) / (2 * r0) +
+				((x1 - x) ** 2) / (2 * r1)) * (np.exp(j * phi) - 1))
 
 realcx1 = np.real(cx1)
 
@@ -61,4 +62,5 @@ I1 = 1 + 2 * realcx1 + cx1 ** 2
 # I2 = 1 + 2 * realcx2 + cx2 ** 2
 
 plt.plot(x1array, I1)
-plt.show()
+# plt.show()
+plt.savefig('output/phase.png')
