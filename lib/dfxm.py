@@ -509,7 +509,7 @@ class DFXM(object):
 		x, y = np.linspace(x0, x1, num), np.linspace(y0, y1, num)
 		zi = scipy.ndimage.map_coordinates(np.transpose(data), np.vstack((x, y)))
 		length = math.sqrt((x1 - x0)**2 + (y1 - y0)**2)
-		return zi  # , length
+		return zi, length
 
 	def strainRange(self, data_part, xr, beta0):
 		strainpic = np.zeros((np.shape(data_part[0, :, :])), dtype='float64')
@@ -523,12 +523,13 @@ class DFXM(object):
 				print "Calculation is %g perc. complete..." % done
 			for j in range(leny):
 				try:
-					popt, pcov = self.fitGaussian(xr, data_part[:, i, j])
+					popt, pcov = self.fitGaussian(xr, data_part[:, i, j], 1E-3)
 					strain = popt[1] / (beta0)  # -0.00003
 					if strain >= -0.001 and strain <= 0.001:
 						strainpic[i, j] = strain
 				except TypeError:
 					print i, j, "Gaussian could not be fitted."
+					# print data_part[:, i, j]
 		strainpic[0, 0] = self.rank
 
 		return strainpic
@@ -924,31 +925,49 @@ class DFXM(object):
 
 		# gradient = self.adjustGradient()
 
-		figstrain, axstrain = plt.subplots(2, 1)
+		figstrain, axstrain = plt.subplots(1, 1)
 
 		strainpic_adjusted = strainpic - np.mean(strainpic)
 		strainpic_adjusted[strainpic_adjusted > 0.00004] = 0.00004
 		strainpic_adjusted[strainpic_adjusted < -0.00004] = -0.00004
 
-		im = axstrain[0].imshow(strainpic_adjusted, cmap="BrBG")
-		# im = axstrain[0].imshow(strainpic+gradient, cmap="BrBG")
-		im2 = axstrain[1].imshow(imgarray[len(imgarray[:, 0, 0]) / 2 - 4, :, :], cmap="Greens")
+		im = axstrain.imshow(strainpic_adjusted, cmap="BrBG")
+		# im = axstrain.imshow(strainpic+gradient, cmap="BrBG")
+		# im2 = axstrain[1].imshow(imgarray[len(imgarray[:, 0, 0]) / 2 - 4, :, :], cmap="Greens")
 
-		# axstrain[1].set_title("%g %g %g %g" % (self.roi[0], self.roi[1], self.roi[2], self.roi[3]))
-		axstrain[0].set_title(r'$\epsilon_{200}$')
-		labels = axstrain[0].get_xticklabels()
-		for i in range(len(labels)):
-			labels[i] = (i - 1) * 10
+		# axstrain[1].set_title("%g %g %g %g" % (self.roi, self.roi[1], self.roi[2], self.roi[3]))
+		axstrain.set_title(r'$\epsilon_{111}$')
+		xlabels = axstrain.get_xticks().tolist()
+		print xlabels
+		axstrain.autoscale(False)
 
-		axstrain[0].set_xticklabels(labels)
-		axstrain[0].set_yticklabels(labels)
-		axstrain[1].set_xticklabels(labels)
-		axstrain[1].set_yticklabels(labels)
+		for i in range(len(xlabels)):
+			xlabels[i] = (i - 1) * 10.0
 
-		axstrain[0].set_xlabel(r'[$\mu m$]')
-		axstrain[1].set_xlabel(r'[$\mu m$]')
-		axstrain[0].set_ylabel(r'[$\mu m$]')
-		axstrain[1].set_ylabel(r'[$\mu m$]')
+		ylabels = axstrain.get_yticks().tolist()
+		print ylabels
+		for j in range(len(ylabels)):
+			ylabels[j] = (j - 1) * 20
+
+		print ylabels
+		ylabels = [-20.0, 0.0, 20.0, 10.0, 60.0, 20.0, 100.0, 30.0, 140.0, 160.0]
+		axstrain.set_yticklabels(ylabels)
+		axstrain.set_xticklabels(xlabels)
+		yticks = axstrain.yaxis.get_major_ticks()
+		axstrain.yaxis.set_visible(yticks[::2])
+		for k, tick in enumerate(yticks):
+			if k % 2 == 0:
+				tick.set_visible(False)
+		# yticks[::2].set_visible(False)
+
+
+		# axstrain[1].set_xticklabels(labels)
+		# axstrain[1].set_yticklabels(labels)
+
+		axstrain.set_xlabel(r'[$\mu m$]')
+		# axstrain[1].set_xlabel(r'[$\mu m$]')
+		axstrain.set_ylabel(r'[$\mu m$]')
+		# axstrain[1].set_ylabel(r'[$\mu m$]')
 
 		def fmt(x, pos):
 			a, b = '{:.2e}'.format(x).split('e')
@@ -956,16 +975,17 @@ class DFXM(object):
 			return r'${} \times 10^{{{}}}$'.format(a, b)
 
 		figstrain.subplots_adjust(right=0.6)
-		cbar_ax1 = figstrain.add_axes([0.85, 0.55, 0.02, 0.35])
-		cbar_ax2 = figstrain.add_axes([0.85, 0.1, 0.02, 0.35])
+		# cbar_ax1 = figstrain.add_axes([0.85, 0.55, 0.02, 0.35])
+		cbar_ax1 = figstrain.add_axes([0.65, 0.17, 0.02, 0.64])
+		# cbar_ax2 = figstrain.add_axes([0.85, 0.1, 0.02, 0.35])
 		clb = figstrain.colorbar(im, cax=cbar_ax1, format=ticker.FuncFormatter(fmt))
-		figstrain.colorbar(im2, cax=cbar_ax2)
+		# figstrain.colorbar(im2, cax=cbar_ax2)
 
 		linestart = [100, 25]
 		linestop = [100, 175]
 		clb.set_clim(-0.00004, 0.00004)
-		axstrain[0].autoscale(False)
-		axstrain[0].plot([linestart[0], linestop[0]], [linestart[1], linestop[1]])
+		axstrain.autoscale(False)
+		# axstrain[0].plot([linestart[0], linestop[0]], [linestart[1], linestop[1]])
 
 		z, length = self.getProjection(strainpic_adjusted, linestart[0], linestart[1], linestop[0], linestop[1], 500)
 		f3, ax3 = plt.subplots()
