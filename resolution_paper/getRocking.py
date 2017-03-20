@@ -42,7 +42,7 @@ def makeGaussian(xr, ampl, midp, sigma):
 
 
 BG = 102.
-scan1 = np.loadtxt('scan524.txt')
+scan1 = np.loadtxt('input/scan524.txt')
 
 diffrz = scan1[:, 0]
 ccdavg = scan1[:, 7]
@@ -58,23 +58,29 @@ fwhm = 2 * math.sqrt(2 * math.log(2)) * pop3
 ampl = (pop3 * math.sqrt(2 * math.pi)) / pop1
 
 
-sns.set_style('white')
-fig, ax = plt.subplots(figsize=(7, 7))
-# fig2, ax2 = plt.subplots(figsize=(7,7))
-# ax2 = ax.twiny()
+gaussoutput = [pop1, pop2, pop3]
 
+np.savetxt('output/gaussoutput.txt', gaussoutput)
+np.savetxt('output/gaussfit.txt', np.vstack((xr_fine, yr)).T)
+np.savetxt('output/rocking.txt', np.vstack((diffrz, ccdavg - BG)).T)
 
-legend_tt = 'Ampl:' + str(pop1) + '\n Midp:' + str(pop2) + '\n FWHM:' + str(fwhm)
+# sns.set_style('white')
+# fig, ax = plt.subplots(figsize=(7, 7))
+# # fig2, ax2 = plt.subplots(figsize=(7,7))
+# # ax2 = ax.twiny()
+#
+#
+# legend_tt = 'Ampl:' + str(pop1) + '\n Midp:' + str(pop2) + '\n FWHM:' + str(fwhm)
 
-ax.plot(diffrz, ccdavg - BG)
-ax.plot(xr_fine, yr, label=legend_tt)
-ax.legend(prop={'size': 10})
-ax.ticklabel_format(useOffset=False, axis='x')
-ax.set_title('Rocking curve, diamond, resolution experiment')
-ax.set_xlabel('diffrz [degrees]')
-ax.set_ylabel('counts (BG subtracted)')
-
-fig.savefig('rockingcurve.png')
+# ax.plot(diffrz, ccdavg - BG)
+# ax.plot(xr_fine, yr, label=legend_tt)
+# ax.legend(prop={'size': 10})
+# ax.ticklabel_format(useOffset=False, axis='x')
+# ax.set_title('Rocking curve, diamond, resolution experiment')
+# ax.set_xlabel('diffrz [degrees]')
+# ax.set_ylabel('counts (BG subtracted)')
+#
+# fig.savefig('rockingcurve.png')
 
 # legend_roll = 'Roll Ampl:' + str(ampl_roll) + '\n Roll Midp:' + str(midp_roll) + '\n Roll FWHM:' + str(fwhm_roll)
 #

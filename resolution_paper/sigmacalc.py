@@ -3,8 +3,8 @@
 """blah."""
 import numpy as np
 # import matplotlib.pyplot as plt
-import cmath
-from math import sin, cos, atan, sqrt, tan
+# import cmath
+from math import sin, cos, atan, sqrt
 from sympy.mpmath import acot
 
 mu = 47.
@@ -23,7 +23,7 @@ Mx = 16.27
 sa = \
 	np.sqrt(R / (mu * pythterm *
 	(N + 1 - (1 / phi) * sin((N + 1) * phi) *
-		cos((N - 1) * phi + 2 * atanterm))
+	cos((N - 1) * phi + 2 * atanterm))
 	))
 
 saappr = \
