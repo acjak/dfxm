@@ -1,25 +1,19 @@
 # !/bin/python
 """blah."""
-import EdfFile
-from lib.getedfdata import *
-from lib.dfxm import *
-
+# import EdfFile
+from lib.getedfdata import GetEdfData
+from lib.dfxm import DFXM
+import warnings
 import numpy as np
+import time
+import math
 # import scipy.interpolate as inter
 from scipy import stats
-
+from mpi4py import MPI
 import matplotlib
 matplotlib.use('Agg')
 import matplotlib.pylab as plt
-#  import seaborn as sns
 
-# import scipy.ndimage
-import itertools
-import sys
-import warnings
-
-from mpi4py import MPI
-import time
 
 comm = MPI.COMM_WORLD
 rank = comm.Get_rank()
@@ -85,6 +79,14 @@ meta = data.getMetaArray()
 a, b, c = data.getMetaValues()
 
 
+def setroi(poi, size):
+	data.roi = [
+		poi[0] - size[0] / 2,
+		poi[0] + size[0] / 2,
+		poi[1] - size[1] / 2,
+		poi[1] + size[1] / 2]
+
+
 def plotImageArray(sampletitle):
 	plt.figure(figsize=(14, 14))
 	gs1 = matplotlib.gridspec.GridSpec(8, 8)
@@ -135,7 +137,7 @@ def getIntList(index_list):
 		data.makeImgArray(index_list, 50, 'linetrace')
 
 		for i in range(len(data.imgarray)):
-			center_int[i] = srcur_max * np.sum(data.imgarray[i]) / srcur[i]
+			center_int[i] = srcur_max * np.average(data.imgarray[i]) / srcur[i]
 			# center_int[i] = np.mean(data.imgarray[i])
 		return center_int
 
@@ -154,7 +156,7 @@ def makeGaussian(xr, ampl, midp, sigma):
 
 
 def convertToDegrees(b):
-	detx_specular = data.beta0
+	# detx_specular = data.beta0
 	# tt0 = 10.89*2
 	sample_det = 5720
 	b_degrees = []
@@ -162,6 +164,29 @@ def convertToDegrees(b):
 		b_degrees.append(math.degrees(math.atan(detx / sample_det)))
 		print i, detx, math.degrees(math.atan(detx / sample_det))
 	return b_degrees
+
+
+def dtr(angle_degrees):
+	return 2 * np.pi * angle_degrees / 360
+
+
+def nonsmiley():
+	beta = []
+	ampl1 = np.zeros((100))
+	ampl2 = np.zeros((100))
+	sig_alpha = 0.0012 / 2.35
+	sig_beta = 0.0313 / 2.35 / math.sin(20 * math.pi / 180)
+	for ii in range(100):
+		beta.append((ii - 50) / 50. * sig_beta * 3)
+		alpha = beta[ii] * (1 - math.cos(10 * math.pi / 180))
+		ampl1[ii] = math.exp(-0.5 * (beta[ii] / sig_beta)**2) * math.exp(-0.5 * (alpha / sig_alpha)**2)
+		ampl2[ii] = math.exp(-0.5 * (beta[ii] / sig_beta)**2)
+
+	max_ampl1 = max(ampl1)
+	ampl1 = ampl1 / max_ampl1
+	max_ampl2 = max(ampl2)
+	ampl2 = ampl2 / max_ampl2
+	return np.array(beta), ampl2
 
 
 def getFits():
@@ -220,7 +245,7 @@ def makePlots(tt_results, roll_results, center_int_tt, center_int_roll, x):
 	# fig3.savefig(data.directory + '/' + sampletitle + '_image{:04}.pdf'.format(x))
 
 
-def makeCombinedPlot(ampl, midp, fwhm, tt_results):
+def makeTTPlot(ampl, midp, fwhm, tt_results):
 	ampl_tt, midp_tt, sigma_tt, xr_tt, yr_tt, fwhm_tt = tt_results
 
 	midp_tt = 2 * np.pi * midp_tt / 360
@@ -230,10 +255,12 @@ def makeCombinedPlot(ampl, midp, fwhm, tt_results):
 
 	fig4, ax4 = plt.subplots(1, 2, figsize=(10, 5))
 
-	legend_tt = 'Ampl: {:06.3}\n Midp: {:05.3} rad\n FWHM: {:06.3} rad'.format(ampl_tt, midp_tt, fwhm_tt)
-	lns = ax4[0].plot(xr_tt, yr_tt, label=legend_tt, color='red')
-	ax4[0].plot(angle, center_int_tt, color='black', linestyle=':')
-	ax4[0].set_xlabel(r'$2\Theta$ [rad]')
+	legend_tt = 'Midp: {:05.3f} mrad\n FWHM: {:05.3} mrad'.format(midp_tt * 1000, fwhm_tt * 1000)
+	ax4[0].plot(angle * 1000, center_int_tt, 'ko', ms=3.0)
+	lns = ax4[0].plot(xr_tt * 1000, yr_tt, label=legend_tt, color='red')
+	ax4[0].set_xlabel(r'$2\Theta$ [mrad]')
+	ax4[0].set_ylabel('Intensity [arb. units]')
+	ax4[0].yaxis.set_major_formatter(plt.NullFormatter())
 	# xlabels = ax4[0].get_xmajorticklabels()
 	# xlabels[1::2] = ' ' * len(xlabels[1::2])
 	# ax4[0].set_xticklabels(xlabels)
@@ -241,10 +268,11 @@ def makeCombinedPlot(ampl, midp, fwhm, tt_results):
 		label.set_visible(False)
 	# lns = ln1 + ln2
 	labs = [l.get_label() for l in lns]
-	ax4[0].legend(lns, labs, loc=0, prop={'size': 8})
+	ax4[0].legend(lns, labs, loc=0, prop={'size': 10})
+	ax4[0].set_ylim(0, max(yr_tt) * 1.15)
 	# ax4[0].ticklabel_format(useOffset=False, axis='x')
 
-	pxsteps = 0.086 * (xsteps - 1000)
+	pxsteps = 0.086 * (xsteps - 1000) / 4.3 * 4.
 
 	x, y, z = fitMyShitUp(ampl, pxsteps, 20)
 	xr, yr = makeGaussian(pxsteps, x, y, z)
@@ -264,7 +292,7 @@ def makeCombinedPlot(ampl, midp, fwhm, tt_results):
 	ax5.tick_params('y', colors='b')
 	# ax4[1][2].set_title('AMPL')
 	ax4[1].set_ylim(np.mean(fwhm) - np.std(fwhm) * 10, np.mean(fwhm) + np.std(fwhm) * 10)
-	ax4[1].set_xlabel('Detector position [um]')
+	ax4[1].set_xlabel('Sample position [um]')
 	fig4.tight_layout()
 
 	# slope, intercept, r_value, p_value, std_err = stats.linregress(pxsteps, fwhm)
@@ -272,32 +300,95 @@ def makeCombinedPlot(ampl, midp, fwhm, tt_results):
 	# ax5.plot(pxsteps, slope * pxsteps + intercept, 'green', label=legend_fwhm)
 
 	slope, intercept, r_value, p_value, std_err = stats.linregress(pxsteps, midp)
-	legend_midp = 'MIDP fit\n slope: {:06.3}    intercept: {:06.3}'.format(slope, intercept)
+	legend_midp = r'MIDP fit slope: %6.3f $m^{-1}$' % (slope * 1000)
 	ln2 = ax5.plot(pxsteps, slope * pxsteps + intercept, 'b', label=legend_midp)
 	lns = ln1 + ln2
 	labs = [l.get_label() for l in ln2]
-	ax5.legend(ln2, labs, loc=0, prop={'size': 8})
+	ax5.legend(ln2, labs, loc=0, prop={'size': 10})
 
 	fig4.savefig(data.directory + '/' + 'tt_resolution.pdf')
 
 	poi = [1024, 1024]
 	size = [2048, 2048]
-	data.roi = [
-		poi[0] - size[0] / 2,
-		poi[0] + size[0] / 2,
-		poi[1] - size[1] / 2,
-		poi[1] + size[1] / 2]
+	setroi(poi, size)
 
 	fig3, ax3 = plt.subplots()
 	img = data.getImage(1505, True)
 	ax3.imshow(img, interpolation=None)
 	fig3.savefig(data.directory + '/' + sampletitle + '_image.pdf')
 
+	fig6, ax6 = plt.subplots()
+	ax6.plot(np.sum(img[900:1100, 1100:1200], 0))
+	fig6.savefig(data.directory + '/' + sampletitle + '_profile.pdf')
+
+
+def makeRockRollPlot(roll_results):
+	ampl_roll, midp_roll, sigma_roll, xr_roll, yr_roll, fwhm_roll = roll_results
+
+	roll_angle = 2 * np.pi * np.array(a) / 360
+	rollfit_angle = 2 * np.pi * xr_roll / 360
+
+	mp = dtr(midp_roll) * 1000
+	# xrw, yrw = makeGaussian(rollfit_angle * 1000, ampl_roll, mp, 1.1 / (2 * math.sqrt(2 * math.log(2))))
+	xrw, yrw = nonsmiley()
+	print xrw
+	print yrw
+
+	fig7, ax7 = plt.subplots(1, 2, figsize=(10, 5))
+
+	legend_roll = 'Smiley term'  # .format(dtr(fwhm_roll) * 1000)
+	legend_rollwide = 'No smiley term'
+	ax7[1].plot(roll_angle * 1000 - mp, center_int_roll, 'ko', ms=3.0)
+	ln1 = ax7[1].plot(rollfit_angle * 1000 - mp, yr_roll, label=legend_roll, color='red')
+	# ln2 = ax7[1].plot(xrw - mp, yrw, label=legend_rollwide, color='blue')
+	ln2 = ax7[1].plot(dtr(xrw) * 1000, yrw * ampl_roll, label=legend_rollwide, color='blue')
+	ax7[1].set_xlabel(r'$\beta$ [mrad]')
+	ax7[1].set_xlim(-2., 2.)
+	# ax7[1].set_xlim(dtr(midp_roll) * 1000 - 2., dtr(midp_roll) * 1000 + 2.)
+
+	lns = ln1 + ln2
+
+	labs = [l.get_label() for l in lns]
+	ax7[1].legend(lns, labs, loc=0, prop={'size': 10})
+
+	for label in ax7[1].xaxis.get_ticklabels()[1::2]:
+		label.set_visible(False)
+
+	fitvals = np.loadtxt('resolution_paper/output/gaussoutput.txt')
+	rock = np.loadtxt('resolution_paper/output/rocking.txt')
+	rockfit = np.loadtxt('resolution_paper/output/gaussfit.txt')
+
+	print fitvals
+
+	rock_angle = 2 * np.pi * rock[:, 0] / 360
+	rockfit_angle = 2 * np.pi * rockfit[:, 0] / 360
+	xrd, yrd = makeGaussian(rockfit_angle * 1000, fitvals[0], dtr(fitvals[1]) * 1000, 1.232e-2 / (2 * math.sqrt(2 * math.log(2))))
+
+	legend_rock = 'Midp: {:03.3f} mrad\n FWHM: {:06.4} mrad'.format(dtr(fitvals[1]) * 1000, dtr(fitvals[2]) * 1000 * 2.35)
+	legend_darwin = 'Darwin width of (111) diamond\nFWHM: {:06.4} mrad'.format(1.232e-2)
+
+	ax7[0].plot(rock_angle * 1000, rock[:, 1], 'ko', ms=3.0)
+	ln1 = ax7[0].plot(rockfit_angle * 1000, rockfit[:, 1], label=legend_rock, color='red')
+	ln2 = ax7[0].plot(xrd, yrd, label=legend_darwin, color='blue')
+	ax7[0].set_xlabel(r'$\theta$ [mrad]')
+	lns = ln1 + ln2
+	labs = [l.get_label() for l in lns]
+	ax7[0].legend(lns, labs, loc=0, prop={'size': 10})
+	major_formatter = plt.FormatStrFormatter('%2.2f')
+	ax7[0].xaxis.set_major_formatter(major_formatter)
+	ax7[0].set_ylim(-2, max(yrd) * 1.35)
+
+	ax7[0].set_ylabel('Intensity [arb. units]')
+	ax7[1].set_ylabel('Intensity [arb. units]')
+
+	ax7[1].yaxis.set_major_formatter(plt.NullFormatter())
+	ax7[0].yaxis.set_major_formatter(plt.NullFormatter())
+
+	fig7.savefig(data.directory + '/' + 'rockandroll.pdf')
+
 
 index_list_tt = makeIndexList_TT(a, b, c)
-
 index_list_roll = makeIndexList_ROLL(a, b, c)
-
 
 b_d = convertToDegrees(b)
 print b[len(b) / 2], a[len(a) / 2]
@@ -310,12 +401,7 @@ fwhm = []
 
 for i, x in enumerate(xsteps):
 	poi = [x, 1024]
-
-	data.roi = [
-		poi[0] - size[0] / 2,
-		poi[0] + size[0] / 2,
-		poi[1] - size[1] / 2,
-		poi[1] + size[1] / 2]
+	setroi(poi, size)
 
 	tt_results, roll_results, center_int_tt, center_int_roll = getFits()
 
@@ -324,18 +410,15 @@ for i, x in enumerate(xsteps):
 	fwhm.append(tt_results[5])
 
 	# makePlots(tt_results, roll_results, center_int_tt, center_int_roll, x)
-poi = [1024, 1024]
 
-data.roi = [
-	poi[0] - size[0] / 2,
-	poi[0] + size[0] / 2,
-	poi[1] - size[1] / 2,
-	poi[1] + size[1] / 2]
+poi = [1024, 1024]
+setroi(poi, size)
+
 tt_results, roll_results, center_int_tt, center_int_roll = getFits()
 
 if rank == 0:
-	makeCombinedPlot(ampl, midp, fwhm, tt_results)
-
+	makeTTPlot(ampl, midp, fwhm, tt_results)
+	makeRockRollPlot(roll_results)
 
 # fig2.savefig(data.directory + '/' + sampletitle + '_roll_onaxis.pdf')
 
