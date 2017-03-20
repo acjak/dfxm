@@ -48,14 +48,29 @@ datatype = 'strain_tt'
 poi = [600, 770]
 size = [200, 200]
 
+poi = [300, 450]
+size = [200, 200]
 
-diffrx_pos = 6
+
+diffrx_pos = 25
 
 test_switch = True
 
 roi = [poi[0]-size[0]/2, poi[0]+size[0]/2, poi[1]-size[1]/2, poi[1]+size[1]/2]
 
-data = GetEdfData(path, filename, bg_path, bg_filename, roi, datatype, test_switch)
+motors = ["obyaw", "diffrz", "diffrx"]
+
+runvars = [
+	path,
+	filename,
+	bg_path,
+	bg_filename,
+	datatype,
+	roi,
+	test_switch,
+	motors]
+
+data = GetEdfData(runvars)
 data.setTest(True)
 data.adjustOffset(False)
 
