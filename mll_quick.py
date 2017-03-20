@@ -1,12 +1,12 @@
 #!/bin/python
 # -*- coding: utf-8 -*-
 """blah."""
-import time
-from lib.getedfdata import *
-from lib.dfxm import *
+# import time
+from lib.getedfdata import GetEdfData
+from lib.dfxm import DFXM
 import numpy as np
 # import itertools
-from mpi4py import MPI
+# from mpi4py import MPI
 import matplotlib
 matplotlib.rc('font', family='DejaVu Sans')
 import matplotlib.pylab as plt
@@ -29,7 +29,7 @@ def getimages(alpha):
 		# cr_filter = data.rfilter(cr, 18, 3)
 
 		z = np.zeros((100))
-		length = 0
+		# length = 0
 
 		proj = [90, 150, 160, 25]
 		pp = np.zeros((4, 20))
