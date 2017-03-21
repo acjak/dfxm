@@ -122,6 +122,7 @@ def makeIndexList(a, b, c, diffrx_pos):
 		data.makeImgArray(index_list, 50, 'linetrace')
 		return tools.makeStrainArrayMPI(data.imgarray, 1, xr, data.beta0), index_list
 
+
 def makeFullTomoArray(a, b, c, tiltpos):
 	index_list = []
 
@@ -149,6 +150,7 @@ def makeFullTomoArray(a, b, c, tiltpos):
 			axarr.yaxis.set_major_formatter(plt.NullFormatter())
 
 		plt.savefig(data.directory + '/%s_%s_rank_%s_array.pdf' % ('tomorange', str(a[tiltpos]), rank))
+
 
 if test_switch:
 	strainpic, index_list = makeIndexList(a, b, c, diffrx_pos)
