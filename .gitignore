@@ -6,6 +6,7 @@ comparefilters/
 *.log
 *.png
 *.eps
+*.npy
 resolution_paper/plots/
 resolution_paper/reciprocal_data_gauss_fitted/
 resolution_paper/input/
