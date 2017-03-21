@@ -36,7 +36,7 @@ import hashlib
 import warnings
 import time
 import matplotlib
-
+import sys
 
 from os import listdir
 from os.path import isfile, join
@@ -444,7 +444,10 @@ class GetEdfData(object):
 			self.meta[i, 0] = self.fma[i][self.indexlist.index(motors[0])]
 			self.meta[i, 1] = self.fma[i][self.indexlist.index(motors[1])]
 			self.meta[i, 2] = self.fma[i][self.indexlist.index(motors[2])]
-			self.meta[i, 3] = self.fma[i][self.indexlist.index('srcur')]
+			try:
+				self.meta[i, 3] = self.fma[i][self.indexlist.index('srcur')]
+			except ValueError:
+				self.meta[i, 3] = self.fma[i][self.indexlist.index('machine current')]
 
 		self.meta = np.around(self.meta, decimals=8)
 
@@ -555,8 +558,8 @@ class GetEdfData(object):
 		# tmpfile = 'output/tmp/img_' + str(index) + '.npy'
 		# tmpfile = 'blah'
 		file_with_path = self.path + '/' + self.data_files[index]
-		if self.rank == 0:
-			print file_with_path
+		# if self.rank == 0:
+		# 	print file_with_path
 
 		if True:
 			img = EdfFile.EdfFile(file_with_path)
@@ -573,7 +576,9 @@ class GetEdfData(object):
 			else:
 				im = img.GetData(0).astype(np.int64)[
 					roi[2]:roi[3],
-					roi[0]:roi[1]] - self.bg_combined
+					roi[0]:roi[1]] - self.bg_combined_full[
+						roi[2]:roi[3],
+						roi[0]:roi[1]]
 				# im = img.GetData(0).astype(np.int64)[roi[2]:roi[3], roi[0]:roi[1]]
 				# print np.shape(im)
 			# np.save(tmpfile,im)
